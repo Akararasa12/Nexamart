@@ -1,26 +1,128 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fdfcf9; /* Warmer ivory white */
+  --foreground: #1c1a17; /* Soft dark charcoal */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  
+  --color-primary: #1c1a17;
+  --color-secondary: #f6f3ed;
+  --color-gold: #c3a475;
+  --color-gold-light: #f4ead4;
+  
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+  --animate-slide-up: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Luxury visual styling classes */
+.luxury-pattern {
+  background-image: 
+    radial-gradient(#c3a47515 1px, transparent 1px),
+    linear-gradient(180deg, #fdfcf9 0%, #f7f3eb 100%);
+  background-size: 24px 24px, 100% 100%;
+}
+
+.luxury-pattern-dark {
+  background-image: 
+    radial-gradient(#c3a47520 1px, transparent 1px),
+    linear-gradient(180deg, #111111 0%, #0a0a0a 100%);
+  background-size: 24px 24px, 100% 100%;
+}
+
+.luxury-border {
+  border: 1px solid #eadecb;
+  position: relative;
+}
+
+.luxury-border::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border: 1px solid #eadecb40;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.luxury-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(195, 164, 117, 0.2);
+  box-shadow: 0 10px 30px -10px rgba(28, 26, 23, 0.05);
+}
+
+.luxury-text-gradient {
+  background: linear-gradient(135deg, #1c1a17 30%, #c3a475 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Luxury white clean mode inputs */
+input, select, textarea {
+  border: 1px solid #eadecb;
+  background-color: #fdfcf9;
+  transition: all 0.2s ease-in-out;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #c3a475;
+  outline: none;
+  box-shadow: 0 0 0 1px #c3a475;
+  background-color: #ffffff;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f6f3ed;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #eadecb;
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c3a475;
+}
+
+/* Hide navigation scrolls */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
