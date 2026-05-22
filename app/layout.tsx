@@ -63,7 +63,7 @@ export default function RootLayout({
           <AuthProvider>
             <Header />
             
-            <main className="flex-grow">
+            <main className="flex-grow overflow-x-hidden">
               {children}
             </main>
 
