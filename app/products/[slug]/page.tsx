@@ -33,6 +33,31 @@ interface ProductInfo {
   reviews: ProductReview[];
 }
 
+interface DBVariant {
+  variant_metadata?: {
+    shade?: string;
+    name?: string;
+    hex?: string;
+    imageDesc?: string;
+  } | null;
+}
+
+interface DBProductDetail {
+  id: string;
+  name: string;
+  base_price: string | number;
+  description?: string;
+  images?: string[];
+  attributes?: {
+    category?: string;
+    ingredients?: string;
+    howToUse?: string;
+    reviews?: ProductReview[];
+    [key: string]: unknown;
+  } | null;
+  product_variants?: DBVariant[];
+}
+
 // Define the comprehensive product catalog with specs, ingredients & customer reviews
 const PRODUCTS_REGISTRY: Record<string, ProductInfo> = {
   "aura-radiant-essence": {
@@ -99,31 +124,82 @@ const BUNDLE_TIERS = [
   { id: "restock", quantity: 6, name: "Restock Bundle", discount: 25, tag: "Hemat Terbesar" }
 ];
 
+const mapProductFromDB = (prod: DBProductDetail): ProductInfo => {
+  const attrs = prod.attributes || {};
+  const mappedVariants = Array.isArray(prod.product_variants)
+    ? prod.product_variants.map((v: DBVariant) => ({
+        name: v.variant_metadata?.shade || v.variant_metadata?.name || "Original",
+        hex: v.variant_metadata?.hex || "#FFFFFF",
+        imageDesc: v.variant_metadata?.imageDesc || ""
+      }))
+    : [];
+
+  return {
+    id: prod.id,
+    name: prod.name,
+    category: attrs.category || "Skincare",
+    basePrice: Number(prod.base_price),
+    image: (prod.images && prod.images[0]) || "/images/aura_essence.png",
+    description: prod.description || "",
+    ingredients: attrs.ingredients || "",
+    howToUse: attrs.howToUse || "",
+    variants: mappedVariants.length > 0 ? mappedVariants : [{ name: "Original", hex: "#FFFFFF", imageDesc: "" }],
+    reviews: Array.isArray(attrs.reviews) ? attrs.reviews : []
+  };
+};
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { addToCart } = useCart();
   
   const slug = (params.slug as string) || "aura-radiant-essence";
-  const product = PRODUCTS_REGISTRY[slug];
-
-  // Fallback if product slug does not exist
-  useEffect(() => {
-    if (!product) {
-      router.push("/products");
-    }
-  }, [product, router]);
+  const [product, setProduct] = useState<ProductInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Funnel States
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    product?.variants?.[0] || null
-  );
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedBundle, setSelectedBundle] = useState(BUNDLE_TIERS[1]); // Default 3 bottles
   const [isSubscription, setIsSubscription] = useState(false);
   const [frequency, setFrequency] = useState("30 days");
   const [activeTab, setActiveTab] = useState("description"); // 'description' | 'ingredients' | 'howto'
 
-  if (!product || !selectedVariant) {
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const res = await fetch(`/api/products?slug=${slug}`);
+        const data = await res.json();
+        if (data.success && data.product) {
+          const mapped = mapProductFromDB(data.product);
+          setProduct(mapped);
+          setSelectedVariant(mapped.variants[0] || null);
+        } else {
+          // Fallback to static registry
+          const fallback = PRODUCTS_REGISTRY[slug];
+          if (fallback) {
+            setProduct(fallback);
+            setSelectedVariant(fallback.variants[0] || null);
+          } else {
+            router.push("/products");
+          }
+        }
+      } catch (err) {
+        console.error("Gagal mengambil detail produk:", err);
+        const fallback = PRODUCTS_REGISTRY[slug];
+        if (fallback) {
+          setProduct(fallback);
+          setSelectedVariant(fallback.variants[0] || null);
+        } else {
+          router.push("/products");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [slug, router]);
+
+  if (isLoading || !product || !selectedVariant) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fdfcf9]">
         <div className="text-center space-y-2">

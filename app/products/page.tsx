@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Star, Sparkles, SlidersHorizontal, ArrowUpRight } from "lucide-react";
@@ -44,11 +44,79 @@ const ALL_PRODUCTS = [
   }
 ];
 
+interface DBProduct {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  base_price: string | number;
+  images?: string[];
+  attributes?: {
+    category?: string;
+    tags?: string[];
+    rating?: number;
+    reviewsCount?: number;
+    [key: string]: unknown;
+  } | null;
+}
+
+interface MappedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  tags: string[];
+  price: number;
+  rating: number;
+  reviewsCount: number;
+  excerpt: string;
+  image: string;
+}
+
 const CATEGORIES = ["Semua", "Skincare", "Makeup", "Anti-Aging", "Organik"];
 
+const mapProductFromDB = (prod: DBProduct): MappedProduct => {
+  const attrs = prod.attributes || {};
+  return {
+    id: prod.id,
+    slug: prod.slug,
+    name: prod.name,
+    category: attrs.category || "Skincare",
+    tags: Array.isArray(attrs.tags) ? attrs.tags : ["Skincare"],
+    price: Number(prod.base_price),
+    rating: typeof attrs.rating === "number" ? attrs.rating : 4.8,
+    reviewsCount: typeof attrs.reviewsCount === "number" ? attrs.reviewsCount : 100,
+    excerpt: prod.description || "",
+    image: (prod.images && prod.images[0]) || "/images/aura_essence.png"
+  };
+};
+
 export default function ProductsPage() {
+  const [products, setProducts] = useState<MappedProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("Semua");
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          const mapped = data.products.map(mapProductFromDB);
+          setProducts(mapped);
+        } else {
+          setProducts(ALL_PRODUCTS);
+        }
+      } catch (err) {
+        console.error("Gagal mengambil data produk:", err);
+        setProducts(ALL_PRODUCTS);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -59,7 +127,7 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    return ALL_PRODUCTS.filter((product) => {
+    return products.filter((product) => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -69,15 +137,15 @@ export default function ProductsPage() {
 
       return matchesSearch && matchesTag;
     });
-  }, [searchQuery, selectedTag]);
+  }, [products, searchQuery, selectedTag]);
 
   // Programmatic JSON-LD Schema
   const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": "NEXAMART Products Catalog",
-    "numberOfItems": ALL_PRODUCTS.length,
-    "itemListElement": ALL_PRODUCTS.map((prod, index) => ({
+    "numberOfItems": products.length,
+    "itemListElement": products.map((prod, index) => ({
       "@type": "ListItem",
       "position": index + 1,
       "url": `https://nexamart-ecommerce.vercel.app/products/${prod.slug}`,
@@ -151,7 +219,14 @@ export default function ProductsPage() {
         </div>
 
         {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-24">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-neutral-400 font-sans">Menyelaraskan koleksi premium...</p>
+            </div>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm text-neutral-400">Tidak ada produk yang cocok dengan pencarian Anda.</p>
           </div>

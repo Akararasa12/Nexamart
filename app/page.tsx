@@ -1,11 +1,72 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkle, ShieldCheck, Check, ArrowRight, Star, ChevronDown, ChevronLeft, ChevronRight, Quote, Building2, Users, Award, Globe } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+interface FlagshipVariant {
+  name: string;
+  hex: string;
+  imageDesc: string;
+}
+
+interface FlagshipBundle {
+  id: string;
+  quantity: number;
+  name: string;
+  discount: number;
+  tag: string;
+}
+
+interface FlagshipProductType {
+  id: string;
+  slug: string;
+  name: string;
+  basePrice: number;
+  description: string;
+  variants: FlagshipVariant[];
+  bundles: FlagshipBundle[];
+}
+
+interface DBVariant {
+  variant_metadata?: {
+    shade?: string;
+    name?: string;
+    hex?: string;
+    imageDesc?: string;
+  } | null;
+}
+
+interface DBProduct {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  base_price: string | number;
+  images?: string[];
+  attributes?: {
+    category?: string;
+    tags?: string[];
+    rating?: number;
+    reviewsCount?: number;
+    [key: string]: unknown;
+  } | null;
+  product_variants?: DBVariant[];
+}
+
+interface MappedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  desc: string;
+  image: string;
+  tag: string;
+  rating: number;
+  reviews: number;
+}
 
 // Flagship product data
 const FLAGSHIP_PRODUCT = {
@@ -63,8 +124,6 @@ const ALL_PRODUCTS = [
   }
 ];
 
-const PRODUCTS_TERBARU = ALL_PRODUCTS.filter(p => ["Baru", "Best Seller"].includes(p.tag || ""));
-const PRODUCTS_TERPOPULER = ALL_PRODUCTS.filter(p => ["Populer", "Best Seller"].includes(p.tag || ""));
 
 // Customer reviews data
 const CUSTOMER_REVIEWS = [
@@ -146,7 +205,7 @@ const FAQS = [
 
 // Auto-scrolling product carousel component
 function ProductCarousel({ products, title, addToCart }: { 
-  products: typeof ALL_PRODUCTS; 
+  products: MappedProduct[]; 
   title: string;
   addToCart: (item: { id: string; name: string; price: number; image: string; isSubscription: boolean }, qty: number) => void;
 }) {
@@ -239,14 +298,77 @@ function ProductCarousel({ products, title, addToCart }: {
   );
 }
 
+const mapHomepageProduct = (prod: DBProduct): MappedProduct => {
+  const attrs = prod.attributes || {};
+  const tagsList = Array.isArray(attrs.tags) ? attrs.tags : [];
+  let displayTag = "";
+  if (tagsList.includes("Baru") || tagsList.includes("New")) {
+    displayTag = "Baru";
+  } else if (tagsList.includes("Best Seller")) {
+    displayTag = "Best Seller";
+  } else if (tagsList.includes("Populer") || tagsList.includes("Popular")) {
+    displayTag = "Populer";
+  } else if (tagsList.length > 0) {
+    displayTag = tagsList[0];
+  }
+
+  return {
+    id: prod.id,
+    slug: prod.slug,
+    name: prod.name,
+    price: Number(prod.base_price),
+    desc: prod.description ? (prod.description.length > 60 ? prod.description.substring(0, 57) + "..." : prod.description) : "",
+    image: (prod.images && prod.images[0]) || "/images/aura_essence.png",
+    tag: displayTag,
+    rating: typeof attrs.rating === "number" ? attrs.rating : 4.8,
+    reviews: typeof attrs.reviewsCount === "number" ? attrs.reviewsCount : 100
+  };
+};
+
+const mapFlagshipProduct = (prod: DBProduct): FlagshipProductType => {
+  const mappedVariants = Array.isArray(prod.product_variants)
+    ? prod.product_variants.map((v: DBVariant) => ({
+        name: v.variant_metadata?.shade || v.variant_metadata?.name || "Original",
+        hex: v.variant_metadata?.hex || "#FFFFFF",
+        imageDesc: v.variant_metadata?.imageDesc || ""
+      }))
+    : [];
+
+  return {
+    id: prod.id,
+    slug: prod.slug,
+    name: prod.name,
+    basePrice: Number(prod.base_price),
+    description: prod.description || "",
+    variants: mappedVariants.length > 0 ? mappedVariants : [{ name: "Original", hex: "#FFFFFF", imageDesc: "" }],
+    bundles: [
+      { id: "starter", quantity: 1, name: "Routine Starter", discount: 0, tag: "Coba Sekarang" },
+      { id: "complete", quantity: 3, name: "Complete Routine Set", discount: 15, tag: "Paling Populer" },
+      { id: "restock", quantity: 6, name: "Restock Bundle", discount: 25, tag: "Hemat Terbesar" }
+    ]
+  };
+};
+
 export default function Storefront() {
   const { addToCart } = useCart();
   
+  const [productsList, setProductsList] = useState<MappedProduct[]>(ALL_PRODUCTS);
+  const [flagshipProduct, setFlagshipProduct] = useState<FlagshipProductType>(FLAGSHIP_PRODUCT);
+  
   // Flagship Selector State
-  const [selectedVariant, setSelectedVariant] = useState(FLAGSHIP_PRODUCT.variants[0]);
-  const [selectedBundle, setSelectedBundle] = useState(FLAGSHIP_PRODUCT.bundles[1]);
+  const [selectedVariant, setSelectedVariant] = useState<FlagshipVariant>(FLAGSHIP_PRODUCT.variants[0]);
+  const [selectedBundle, setSelectedBundle] = useState<FlagshipBundle>(FLAGSHIP_PRODUCT.bundles[1]);
   const [isSubscription, setIsSubscription] = useState(false);
   const [frequency, setFrequency] = useState("30 days");
+
+  // Dynamic filter products
+  const productsTerbaru = useMemo(() => {
+    return productsList.filter(p => ["Baru", "Best Seller"].includes(p.tag || ""));
+  }, [productsList]);
+
+  const productsTerpopuler = useMemo(() => {
+    return productsList.filter(p => ["Populer", "Best Seller"].includes(p.tag || ""));
+  }, [productsList]);
 
   // FAQ Accordion State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -280,11 +402,35 @@ export default function Storefront() {
   useEffect(() => {
     // Silent fetch to seed data if it doesn't exist
     fetch("/api/rag/embed").catch((err) => console.log("Seeder status:", err));
+
+    async function loadDynamicStorefront() {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          // Map products
+          const mappedProducts = data.products.map(mapHomepageProduct);
+          setProductsList(mappedProducts);
+          
+          // Find flagship
+          const dbFlagship = data.products.find((p: DBProduct) => p.slug === "aura-radiant-essence");
+          if (dbFlagship) {
+            const mappedFlagship = mapFlagshipProduct(dbFlagship);
+            setFlagshipProduct(mappedFlagship);
+            setSelectedVariant(mappedFlagship.variants[0]);
+            setSelectedBundle(mappedFlagship.bundles[1]);
+          }
+        }
+      } catch (err) {
+        console.error("Gagal memuat data beranda dinamis:", err);
+      }
+    }
+    loadDynamicStorefront();
   }, []);
 
   // Compute Flagship pricing display
   const computeFlagshipPricing = () => {
-    const singleBase = FLAGSHIP_PRODUCT.basePrice;
+    const singleBase = flagshipProduct.basePrice;
     const qty = selectedBundle.quantity;
     const unitPrice = isSubscription ? singleBase * 0.9 : singleBase;
     const subtotal = unitPrice * qty;
@@ -305,9 +451,9 @@ export default function Storefront() {
 
   const handleAddFlagshipToCart = () => {
     addToCart({
-      id: FLAGSHIP_PRODUCT.id,
-      name: `${FLAGSHIP_PRODUCT.name} - ${selectedVariant.name}`,
-      price: FLAGSHIP_PRODUCT.basePrice,
+      id: flagshipProduct.id,
+      name: `${flagshipProduct.name} - ${selectedVariant.name}`,
+      price: flagshipProduct.basePrice,
       image: "/images/aura_essence.png",
       variantName: selectedVariant.name,
       variantHex: selectedVariant.hex,
@@ -431,8 +577,8 @@ export default function Storefront() {
             </p>
           </div>
 
-          <ProductCarousel products={PRODUCTS_TERBARU} title="Produk Terbaru" addToCart={addToCart} />
-          <ProductCarousel products={PRODUCTS_TERPOPULER} title="Paling Populer" addToCart={addToCart} />
+          <ProductCarousel products={productsTerbaru} title="Produk Terbaru" addToCart={addToCart} />
+          <ProductCarousel products={productsTerpopuler} title="Paling Populer" addToCart={addToCart} />
         </div>
       </motion.section>
 
@@ -496,14 +642,14 @@ export default function Storefront() {
               <span className="text-[10px] font-bold text-neutral-800 font-sans ml-1">4.9/5.0 (4,892 Ulasan Terverifikasi)</span>
             </div>
             
-            <Link href={`/products/${FLAGSHIP_PRODUCT.slug}`} className="group block">
+            <Link href={`/products/${flagshipProduct.slug}`} className="group block">
               <h3 className="font-serif text-3xl font-bold tracking-tight text-neutral-950 group-hover:text-amber-700 transition-colors">
-                {FLAGSHIP_PRODUCT.name}
+                {flagshipProduct.name}
               </h3>
             </Link>
             
             <p className="text-xs text-neutral-400 leading-relaxed font-sans">
-              {FLAGSHIP_PRODUCT.description}
+              {flagshipProduct.description}
             </p>
           </div>
 
@@ -513,7 +659,7 @@ export default function Storefront() {
               Pilih Shade & Formula Varian:
             </label>
             <div className="flex flex-wrap gap-2.5">
-              {FLAGSHIP_PRODUCT.variants.map((v) => {
+              {flagshipProduct.variants.map((v: FlagshipVariant) => {
                 const isSelected = selectedVariant.name === v.name;
                 return (
                   <button
@@ -546,10 +692,10 @@ export default function Storefront() {
             </div>
             
             <div className="grid grid-cols-1 gap-2.5">
-              {FLAGSHIP_PRODUCT.bundles.map((bundle) => {
+              {flagshipProduct.bundles.map((bundle: FlagshipBundle) => {
                 const isSelected = selectedBundle.id === bundle.id;
                 
-                const unitPrice = isSubscription ? FLAGSHIP_PRODUCT.basePrice * 0.9 : FLAGSHIP_PRODUCT.basePrice;
+                const unitPrice = isSubscription ? flagshipProduct.basePrice * 0.9 : flagshipProduct.basePrice;
                 const priceBeforeBundle = unitPrice * bundle.quantity;
                 const finalBundlePrice = priceBeforeBundle - Math.round(priceBeforeBundle * (bundle.discount / 100));
                 const finalUnitCost = Math.round(finalBundlePrice / bundle.quantity);
