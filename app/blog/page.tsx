@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Calendar, User, ArrowRight, Loader2, X } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Calendar, User, ArrowRight, Loader2 } from "lucide-react";
 
 interface Journal {
   id: string;
@@ -54,7 +55,6 @@ const DEFAULT_BLOG_POSTS: Journal[] = [
 export default function BlogPage() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
 
   useEffect(() => {
     async function fetchJournals() {
@@ -121,12 +121,11 @@ export default function BlogPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 
-                    onClick={() => setSelectedJournal(post)}
-                    className="font-serif text-xl font-bold text-neutral-950 hover:text-amber-700 transition-colors cursor-pointer"
-                  >
-                    {post.title}
-                  </h3>
+                  <Link href={`/blog/${post.slug}`}>
+                    <h3 className="font-serif text-xl font-bold text-neutral-950 hover:text-amber-700 transition-colors cursor-pointer">
+                      {post.title}
+                    </h3>
+                  </Link>
                   <p className="text-xs text-neutral-400 font-sans leading-relaxed">
                     {post.excerpt}
                   </p>
@@ -144,13 +143,13 @@ export default function BlogPage() {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedJournal(post)}
+                  <Link
+                    href={`/blog/${post.slug}`}
                     className="text-[10px] font-bold uppercase tracking-wider text-neutral-950 hover:text-amber-700 flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none"
                   >
                     Baca Artikel
                     <ArrowRight className="w-3.5 h-3.5 text-amber-600" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -158,57 +157,7 @@ export default function BlogPage() {
         )}
       </div>
 
-      {/* Reader Modal */}
-      {selectedJournal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#fdfcf9] w-full max-w-2xl rounded-3xl overflow-hidden border border-[#eadecb] shadow-2xl flex flex-col max-h-[85vh]">
-            
-            {/* Modal Header */}
-            <div className="p-6 border-b border-[#eadecb]/40 flex justify-between items-start bg-white/50">
-              <div>
-                <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-amber-700">
-                  {selectedJournal.category} • {selectedJournal.read_time}
-                </span>
-                <h3 className="font-serif text-xl font-bold text-neutral-950 mt-1 leading-snug">
-                  {selectedJournal.title}
-                </h3>
-                <div className="flex gap-4 text-[10px] text-neutral-400 mt-2">
-                  <span>{formatDate(selectedJournal.created_at)}</span>
-                  <span>Oleh: {selectedJournal.author}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedJournal(null)}
-                className="p-2 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer text-neutral-400 hover:text-neutral-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto font-sans text-xs text-neutral-700 leading-relaxed space-y-4">
-              <p className="font-serif italic text-neutral-500 border-l-2 border-amber-600 pl-4 py-1">
-                {selectedJournal.excerpt}
-              </p>
-              <div className="whitespace-pre-line pt-2 text-neutral-800 text-sm">
-                {selectedJournal.content}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-[#eadecb]/40 bg-neutral-50/50 flex justify-end">
-              <button
-                onClick={() => setSelectedJournal(null)}
-                className="px-6 py-2 bg-neutral-950 hover:bg-neutral-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full cursor-pointer transition-all"
-              >
-                Tutup Jurnal
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
+      {/* The article is now loaded in a separate page under /blog/[slug] */}
     </div>
   );
 }

@@ -7,7 +7,9 @@ import {
   ArrowRight, Check, X, LogOut, Loader2, Plus, 
   Trash2, Edit, Save, AlertTriangle, Eye, ShieldAlert, BarChart3, 
   TrendingUp, Calendar, Search, Filter, HelpCircle,
-  Package, BookOpen, Tag, MessageSquare, Download, Printer
+  Package, BookOpen, Tag, MessageSquare, Download, Printer,
+  Globe, Mail, Users, Smartphone, Copy, ExternalLink, History, Paperclip,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 
@@ -137,12 +139,74 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [usernameInput, setUsernameInput] = useState<string>("owner");
   const [passwordInput, setPasswordInput] = useState<string>("");
   const [authError, setAuthError] = useState<string>("");
   const [authToken, setAuthToken] = useState<string>("");
+  const [adminUsername, setAdminUsername] = useState<string>("");
+  const [adminRole, setAdminRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState<
-    "overview" | "orders" | "subscriptions" | "knowledge" | "products" | "jurnal" | "coupons" | "chatbot" | "spreadsheets"
+    "overview" | "orders" | "subscriptions" | "products" | "jurnal" | "coupons" | "landing_pages" | "marketing_blast" | "root_access" | "knowledge" | "chatbot" | "spreadsheets"
   >("overview");
+
+  // Root Access & Accounts & Logs States
+  const [adminAccountsList, setAdminAccountsList] = useState<any[]>([]);
+  const [isAdminAccountsLoading, setIsAdminAccountsLoading] = useState<boolean>(false);
+  const [adminLogsList, setAdminLogsList] = useState<any[]>([]);
+  const [isAdminLogsLoading, setIsAdminLogsLoading] = useState<boolean>(false);
+  const [newAccUsername, setNewAccUsername] = useState<string>("");
+  const [newAccRole, setNewAccRole] = useState<"Owner" | "Admin" | "Manager">("Admin");
+  const [newAccPassword, setNewAccPassword] = useState<string>("");
+  const [isAccSubmitting, setIsAccSubmitting] = useState<boolean>(false);
+
+  // Landing Page Builder States
+  const [landingPages, setLandingPages] = useState<any[]>([]);
+  const [isLpsLoading, setIsLpsLoading] = useState<boolean>(false);
+  const [leadsList, setLeadsList] = useState<any[]>([]);
+  const [isLeadsLoading, setIsLeadsLoading] = useState<boolean>(false);
+  
+  // LP Editor Form States
+  const [isLpModalOpen, setIsLpModalOpen] = useState<boolean>(false);
+  const [lpForm, setLpForm] = useState<{
+    id?: string;
+    title: string;
+    slug: string;
+    status: "Draft" | "Published";
+    blocks: any[];
+  }>({
+    title: "",
+    slug: "",
+    status: "Draft",
+    blocks: []
+  });
+  const [isLpSubmitting, setIsLpSubmitting] = useState<boolean>(false);
+  const [lpPreviewMode, setLpPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [leadsSearch, setLeadsSearch] = useState<string>("");
+
+  // Email & WhatsApp Blast States
+  const [blastType, setBlastType] = useState<"email" | "whatsapp">("email");
+  // Email States
+  const [emailSubject, setEmailSubject] = useState<string>("");
+  const [emailTemplate, setEmailTemplate] = useState<"promo" | "newsletter" | "discount">("promo");
+  const [emailAudience, setEmailAudience] = useState<"all" | "royal" | "active" | "custom">("all");
+  const [emailCsvText, setEmailCsvText] = useState<string>("");
+  const [emailSendingStatus, setEmailSendingStatus] = useState<"idle" | "sending" | "completed">("idle");
+  const [emailProgress, setEmailProgress] = useState<number>(0);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [emailStats, setEmailStats] = useState<any>(null);
+  const [emailHistory, setEmailHistory] = useState<any[]>([]);
+
+  // WhatsApp States
+  const [waMessage, setWaMessage] = useState<string>("");
+  const [waImage, setWaImage] = useState<string>("");
+  const [waAudience, setWaAudience] = useState<"all" | "royal" | "active" | "custom">("all");
+  const [waCsvText, setWaCsvText] = useState<string>("");
+  const [waSendingStatus, setWaSendingStatus] = useState<"idle" | "sending" | "completed">("idle");
+  const [waProgress, setWaProgress] = useState<number>(0);
+  const [waLogs, setWaLogs] = useState<any[]>([]);
+  const [waChatMessages, setWaChatMessages] = useState<any[]>([]);
+  const [waHistory, setWaHistory] = useState<any[]>([]);
+  const [waStats, setWaStats] = useState<any>(null);
 
   // Loading States
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
@@ -283,8 +347,12 @@ export default function AdminDashboard() {
   // Check login on load
   useEffect(() => {
     const savedToken = localStorage.getItem("nexa_admin_token");
+    const savedUsername = localStorage.getItem("nexa_admin_username");
+    const savedRole = localStorage.getItem("nexa_admin_role");
     if (savedToken) {
       setAuthToken(savedToken);
+      setAdminUsername(savedUsername || "owner");
+      setAdminRole(savedRole || "Owner");
       setIsAuthenticated(true);
     }
   }, []);
@@ -308,18 +376,26 @@ export default function AdminDashboard() {
       const res = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: passwordInput })
+        body: JSON.stringify({ 
+          username: usernameInput, 
+          password: passwordInput 
+        })
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Password salah");
+        throw new Error(data.error || "Username atau password salah");
       }
 
       localStorage.setItem("nexa_admin_token", data.token);
+      localStorage.setItem("nexa_admin_username", data.username);
+      localStorage.setItem("nexa_admin_role", data.role);
+      
       setAuthToken(data.token);
+      setAdminUsername(data.username);
+      setAdminRole(data.role);
       setIsAuthenticated(true);
-      setActionMessage({ type: "success", text: "Login berhasil. Selamat datang di NEXAMART Admin." });
+      setActionMessage({ type: "success", text: `Login berhasil. Selamat datang ${data.username} (${data.role}).` });
     } catch (err: unknown) {
       const error = err as Error;
       setAuthError(error.message);
@@ -330,10 +406,83 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("nexa_admin_token");
+    localStorage.removeItem("nexa_admin_username");
+    localStorage.removeItem("nexa_admin_role");
     setAuthToken("");
+    setAdminUsername("");
+    setAdminRole("");
     setIsAuthenticated(false);
     setPasswordInput("");
     setActionMessage({ type: "success", text: "Berhasil keluar dari admin." });
+  };
+
+  // EXTENDED FETCH CALLS
+  const fetchAdminAccounts = async () => {
+    setIsAdminAccountsLoading(true);
+    try {
+      const res = await fetch("/api/admin/accounts", {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAdminAccountsList(data.accounts || []);
+      }
+    } catch (err) {
+      console.error("Error fetching accounts:", err);
+    } finally {
+      setIsAdminAccountsLoading(false);
+    }
+  };
+
+  const fetchAdminLogs = async () => {
+    setIsAdminLogsLoading(true);
+    try {
+      const res = await fetch("/api/admin/logs", {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAdminLogsList(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    } finally {
+      setIsAdminLogsLoading(false);
+    }
+  };
+
+  const fetchLandingPages = async () => {
+    setIsLpsLoading(true);
+    try {
+      const res = await fetch("/api/admin/landing-pages", {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLandingPages(data.landingPages || []);
+      }
+    } catch (err) {
+      console.error("Error fetching landing pages:", err);
+    } finally {
+      setIsLpsLoading(false);
+    }
+  };
+
+  const fetchLeads = async () => {
+    setIsLeadsLoading(true);
+    try {
+      const res = await fetch("/api/admin/landing-pages/leads", {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLeadsList(data.leads || []);
+      }
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+    } finally {
+      setIsLeadsLoading(false);
+    }
   };
 
   // FETCH CALLS
@@ -466,9 +615,403 @@ export default function AdminDashboard() {
       fetchProducts();
       fetchJournals();
       fetchCoupons();
+      fetchAdminAccounts();
+      fetchAdminLogs();
+      fetchLandingPages();
+      fetchLeads();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authToken]);
+
+  // Root Access / Accounts handlers
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccUsername || !newAccPassword) return;
+
+    setIsAccSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          username: newAccUsername,
+          role: newAccRole,
+          password: newAccPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionMessage({ type: "success", text: `Akun admin ${newAccUsername} (${newAccRole}) berhasil disimpan/diperbarui.` });
+        setNewAccUsername("");
+        setNewAccPassword("");
+        fetchAdminAccounts();
+        fetchAdminLogs();
+      } else {
+        setActionMessage({ type: "error", text: data.error || "Gagal menyimpan akun admin." });
+      }
+    } catch (err) {
+      console.error(err);
+      setActionMessage({ type: "error", text: "Terjadi kesalahan koneksi saat menyimpan akun." });
+    } finally {
+      setIsAccSubmitting(false);
+    }
+  };
+
+  const handleAccountDelete = async (id: string, username: string) => {
+    if (id === "1" || username === "owner") {
+      setActionMessage({ type: "error", text: "Akun owner utama tidak dapat dihapus." });
+      return;
+    }
+    if (!confirm(`Apakah Anda yakin ingin menghapus akun admin: ${username}?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/accounts?id=${id}&username=${username}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${authToken}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionMessage({ type: "success", text: `Akun admin ${username} berhasil dihapus.` });
+        fetchAdminAccounts();
+        fetchAdminLogs();
+      } else {
+        setActionMessage({ type: "error", text: data.error || "Gagal menghapus akun." });
+      }
+    } catch (err) {
+      console.error(err);
+      setActionMessage({ type: "error", text: "Terjadi kesalahan koneksi saat menghapus akun." });
+    }
+  };
+
+  // Landing Page Builder handlers
+  const addLpBlock = (type: "hero" | "product_spotlight" | "benefits" | "testimonials" | "faq" | "lead_form") => {
+    const id = `block-${Math.random().toString(36).substr(2, 9)}`;
+    let content = {};
+    if (type === "hero") {
+      content = {
+        title: "Kembalikan Kilau Alami Wajah Anda",
+        subtitle: "Formula esens premium untuk memperkuat skin barrier Anda dalam 14 hari.",
+        cta_text: "Dapatkan Sekarang",
+        bg_gradient: "from-[#faf8f5] to-[#f4ead4]",
+        image_url: ""
+      };
+    } else if (type === "product_spotlight") {
+      content = {
+        id: "prod-lp-direct",
+        name: "Aura Radiant Essence",
+        price: 289000,
+        image_url: "https://images.unsplash.com/photo-1608248597481-496100c8c836?w=600&auto=format&fit=crop&q=60",
+        variant: "Standard",
+        title: "Mengapa Memilih Kami?",
+        description: "Diformulasikan secara ilmiah untuk menghidrasi kulit secara mendalam dan menyamarkan garis halus.",
+        btn_text: "Beli Sekarang (Diskon 10%)"
+      };
+    } else if (type === "benefits") {
+      content = {
+        title: "Manfaat Hasil Studi Klinis",
+        items: [
+          { title: "Mencerahkan 3x Lebih Cepat", desc: "Kandungan aktif menghambat sintesis melanin berlebih secara alami." },
+          { title: "Deep Hydration", desc: "Mengunci kelembapan kulit hingga 24 jam dengan kandungan Hyaluronic Acid." },
+          { title: "Bebas Paraben & Alkohol", desc: "Sangat aman bagi jenis kulit sensitif, berjerawat, maupun bumil." }
+        ]
+      };
+    } else if (type === "testimonials") {
+      content = {
+        title: "Apa Kata Pelanggan Setia NEXAMART",
+        items: [
+          { quote: "Kulit jadi sangat kenyal dan noda hitam memudar hanya dalam waktu 10 hari pemakaian!", author: "Syifa A. (Royal Member)", rating: 5 },
+          { quote: "Sensasi esens sangat menenangkan di wajah sensitif. Sangat direkomendasikan dokter kulit saya.", author: "Ratih P.", rating: 5 }
+        ]
+      };
+    } else if (type === "faq") {
+      content = {
+        title: "Tanya Jawab (FAQ)",
+        items: [
+          { q: "Apakah produk ini aman untuk bumil & busui?", a: "Ya, formula kami bebas dari paraben, alkohol, pewangi buatan, serta retinoid yang aman bagi ibu hamil & menyusui." },
+          { q: "Kapan hasil pemakaian mulai terlihat?", a: "Rata-rata customer kami mendapati kulit terasa lebih lembap instan sejak hari pertama dan kecerahan meningkat dalam 14 hari pemakaian rutin pagi & malam." }
+        ]
+      };
+    } else if (type === "lead_form") {
+      content = {
+        title: "Konsultasikan Jenis Kulit Anda",
+        subtitle: "Dapatkan konsultasi gratis & kupon sampel produk kecantikan eksklusif dengan mengisi formulir di bawah ini.",
+        btn_text: "Klaim Konsultasi Gratis"
+      };
+    }
+
+    setLpForm(prev => ({
+      ...prev,
+      blocks: [...(prev.blocks || []), { type, id, content }]
+    }));
+  };
+
+  const removeLpBlock = (id: string) => {
+    setLpForm(prev => ({
+      ...prev,
+      blocks: (prev.blocks || []).filter(b => b.id !== id)
+    }));
+  };
+
+  const updateLpBlockContent = (id: string, updatedFields: any) => {
+    setLpForm(prev => ({
+      ...prev,
+      blocks: (prev.blocks || []).map(b => {
+        if (b.id === id) {
+          return { ...b, content: { ...b.content, ...updatedFields } };
+        }
+        return b;
+      })
+    }));
+  };
+
+  const moveLpBlock = (index: number, direction: "up" | "down") => {
+    const blocks = [...(lpForm.blocks || [])];
+    if (direction === "up" && index > 0) {
+      const temp = blocks[index];
+      blocks[index] = blocks[index - 1];
+      blocks[index - 1] = temp;
+    } else if (direction === "down" && index < blocks.length - 1) {
+      const temp = blocks[index];
+      blocks[index] = blocks[index + 1];
+      blocks[index + 1] = temp;
+    }
+    setLpForm(prev => ({ ...prev, blocks }));
+  };
+
+  const handleLpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lpForm.title || !lpForm.slug) return;
+
+    setIsLpSubmitting(true);
+    try {
+      const isEdit = !!lpForm.id;
+      const res = await fetch("/api/admin/landing-pages", {
+        method: isEdit ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify(lpForm)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionMessage({
+          type: "success",
+          text: `Landing page "${lpForm.title}" berhasil ${isEdit ? 'diperbarui' : 'dibuat'}.`
+        });
+        setIsLpModalOpen(false);
+        fetchLandingPages();
+        fetchAdminLogs();
+      } else {
+        setActionMessage({ type: "error", text: data.error || "Gagal menyimpan landing page." });
+      }
+    } catch (err) {
+      console.error(err);
+      setActionMessage({ type: "error", text: "Terjadi kesalahan koneksi." });
+    } finally {
+      setIsLpSubmitting(false);
+    }
+  };
+
+  const handleLpDelete = async (id: string, title: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus landing page "${title}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/landing-pages?id=${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${authToken}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionMessage({ type: "success", text: `Landing page "${title}" berhasil dihapus.` });
+        fetchLandingPages();
+        fetchAdminLogs();
+      } else {
+        setActionMessage({ type: "error", text: data.error || "Gagal menghapus landing page." });
+      }
+    } catch (err) {
+      console.error(err);
+      setActionMessage({ type: "error", text: "Terjadi kesalahan koneksi." });
+    }
+  };
+
+  // Leads export
+  const handleExportLeadsCSV = () => {
+    if (leadsList.length === 0) return;
+    
+    const headers = ["ID", "Landing Page Slug", "Nama Lengkap", "WhatsApp", "Email", "Pesan", "Tanggal"];
+    const rows = leadsList.map(l => [
+      l.id,
+      l.lp_slug,
+      l.name,
+      l.whatsapp,
+      l.email || "",
+      l.message || "",
+      l.created_at
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+      
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `leads_report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Email Blast simulated sender
+  const handleStartEmailBlast = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailSubject) return;
+
+    setEmailSendingStatus("sending");
+    setEmailProgress(0);
+    setEmailLogs([]);
+    setEmailStats(null);
+
+    const customers = [
+      { name: "Syifa Amelia", email: "syifa.amelia@gmail.com" },
+      { name: "Ratih Paramitha", email: "ratih.paramitha@yahoo.com" },
+      { name: "Budi Santoso", email: "budi.santoso@outlook.com" },
+      { name: "Dewi Lestari", email: "dewi.lestari@gmail.com" },
+      { name: "Ahmad Faisal", email: "ahmad.faisal@corp.id" },
+      { name: "Citra Kirana", email: "citra.kirana@royalmember.id" }
+    ];
+
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 10;
+      setEmailProgress(currentProgress);
+
+      const customerIndex = Math.floor((currentProgress / 100) * (customers.length - 1));
+      const customer = customers[customerIndex];
+      
+      if (customer) {
+        const statuses = [
+          `Mengirim email ke ${customer.name} <${customer.email}>...`,
+          `✓ Sukses terkirim ke ${customer.name}`,
+          currentProgress % 3 === 0 ? `✉ Dibuka oleh ${customer.name}` : null,
+          currentProgress % 5 === 0 ? `➔ Klik tautan promo oleh ${customer.name}` : null,
+          currentProgress % 9 === 0 ? `🛒 Konversi transaksi oleh ${customer.name}` : null,
+        ].filter(Boolean);
+
+        setEmailLogs(prev => [...prev, ...statuses.map(text => ({ text: text!, time: new Date().toLocaleTimeString() }))]);
+      }
+
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        setEmailSendingStatus("completed");
+        
+        const finalStats = {
+          delivered: 100,
+          openRate: 72,
+          clickRate: 35,
+          conversionRate: 12,
+          totalSent: emailAudience === "all" ? 420 : emailAudience === "royal" ? 180 : emailAudience === "active" ? 240 : 10
+        };
+        setEmailStats(finalStats);
+
+        const newCampaign = {
+          id: `camp-em-${Date.now()}`,
+          subject: emailSubject,
+          template: emailTemplate,
+          audience: emailAudience,
+          sentAt: new Date().toISOString(),
+          stats: finalStats
+        };
+        setEmailHistory(prev => [newCampaign, ...prev]);
+        setActionMessage({ type: "success", text: "Email Blast selesai disimulasikan." });
+      }
+    }, 400);
+  };
+
+  // WhatsApp Blast simulated sender
+  const handleStartWaBlast = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waMessage) return;
+
+    setWaSendingStatus("sending");
+    setWaProgress(0);
+    setWaLogs([]);
+    setWaChatMessages([]);
+
+    const phones = [
+      { name: "Syifa (Royal Member)", number: "0812-7762-1102" },
+      { name: "Ratih Paramitha", number: "0857-1192-3841" },
+      { name: "Dewi Lestari", number: "0819-3329-8871" },
+      { name: "Citra (Manager)", number: "0821-4402-9982" }
+    ];
+
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 25;
+      setWaProgress(currentProgress);
+
+      const recipientIndex = Math.floor((currentProgress / 100) * (phones.length - 1));
+      const r = phones[recipientIndex];
+
+      if (r) {
+        setWaLogs(prev => [
+          ...prev,
+          { text: `Mengirim pesan WA ke ${r.name} (${r.number})...`, time: new Date().toLocaleTimeString() },
+          { text: `✓ Terkirim ke ${r.name} (${r.number})`, time: new Date().toLocaleTimeString() },
+          { text: `✓✓ Dibaca oleh ${r.name}`, time: new Date().toLocaleTimeString() }
+        ]);
+
+        const formattedMsg = waMessage
+          .replace("{customer_name}", r.name)
+          .replace("{discount_code}", "NEXAROYAL10");
+
+        setWaChatMessages(prev => [
+          ...prev,
+          {
+            id: `msg-${Date.now()}-${recipientIndex}`,
+            sender: "me",
+            recipientName: r.name,
+            number: r.number,
+            text: formattedMsg,
+            image: waImage || null,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+      }
+
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        setWaSendingStatus("completed");
+
+        const finalStats = {
+          totalSent: waAudience === "all" ? 420 : waAudience === "royal" ? 180 : waAudience === "active" ? 240 : 10,
+          readRate: 94,
+          replyRate: 28
+        };
+        setWaStats(finalStats);
+
+        const newCampaign = {
+          id: `camp-wa-${Date.now()}`,
+          message: waMessage,
+          image: waImage,
+          audience: waAudience,
+          sentAt: new Date().toISOString(),
+          stats: finalStats
+        };
+        setWaHistory(prev => [newCampaign, ...prev]);
+        setActionMessage({ type: "success", text: "Simulasi WhatsApp Blast selesai." });
+      }
+    }, 600);
+  };
 
   // IMAGE UPLOAD HELPER
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: "product" | "journal") => {
@@ -1208,6 +1751,37 @@ export default function AdminDashboard() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-2">
+                Username / Akun Admin
+              </label>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                placeholder="Masukkan username..."
+                className="w-full px-5 py-4 border border-[#eadecb] rounded-xl text-neutral-800 text-sm focus:border-[#c3a475] bg-[#fdfcf9] placeholder-neutral-300 font-semibold outline-none"
+                disabled={isAuthLoading}
+                required
+              />
+              <div className="flex gap-2 mt-2">
+                {["owner", "admin", "manager"].map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setUsernameInput(role)}
+                    className={`px-3 py-1 text-[9px] uppercase font-bold tracking-wider rounded-md border transition-all ${
+                      usernameInput.toLowerCase() === role 
+                        ? "border-neutral-950 bg-neutral-950 text-white shadow-sm" 
+                        : "border-[#eadecb]/60 text-neutral-500 hover:bg-[#f6f3ed]"
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-2">
                 Kata Sandi Admin
               </label>
               <input
@@ -1281,6 +1855,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-widest text-[#c3a475] bg-[#f6f3ed] px-3.5 py-2 border border-[#eadecb]/30 rounded-full">
+              Sesi: {adminUsername} ({adminRole})
+            </span>
             <Link 
               href="/"
               className="hidden md:inline-flex text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-neutral-950 transition-colors border border-neutral-200 px-4 py-2.5 rounded-full bg-[#fdfcf9]"
@@ -1334,6 +1911,9 @@ export default function AdminDashboard() {
             { id: "products", label: "Products", icon: Package },
             { id: "jurnal", label: "Jurnal", icon: BookOpen },
             { id: "coupons", label: "Voucher", icon: Tag },
+            { id: "landing_pages", label: "Landing Page", icon: Globe },
+            { id: "marketing_blast", label: "Marketing Blast", icon: Mail },
+            { id: "root_access", label: "Root Access", icon: Users },
             { id: "knowledge", label: "AI Knowledge", icon: Database },
             { id: "chatbot", label: "AI Chatbot", icon: MessageSquare },
             { id: "spreadsheets", label: "Spreadsheets", icon: Download },
@@ -2521,6 +3101,898 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
           )}
+
+          {/* TAB 10: LANDING PAGES */}
+          {activeTab === "landing_pages" && (
+            <motion.div
+              key="landing-pages-content"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-8"
+            >
+              {/* Header stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white border border-[#eadecb] p-6 rounded-2xl luxury-card animate-fadeIn">
+                  <h5 className="text-[9px] text-[#c3a475] uppercase tracking-widest font-bold mb-1">Total Halaman Landing</h5>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-serif font-bold text-neutral-900">{landingPages.length}</span>
+                    <span className="text-[10px] text-neutral-400 font-bold">halaman</span>
+                  </div>
+                </div>
+                <div className="bg-white border border-[#eadecb] p-6 rounded-2xl luxury-card animate-fadeIn">
+                  <h5 className="text-[9px] text-[#c3a475] uppercase tracking-widest font-bold mb-1">Total Leads Masuk</h5>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-serif font-bold text-neutral-900">{leadsList.length}</span>
+                    <span className="text-[10px] text-neutral-400 font-bold">leads terdaftar</span>
+                  </div>
+                </div>
+                <div className="bg-white border border-[#eadecb] p-6 rounded-2xl luxury-card flex items-center justify-between animate-fadeIn">
+                  <div>
+                    <h5 className="text-[9px] text-neutral-400 uppercase tracking-widest font-bold mb-1">Landing Page Builder</h5>
+                    <p className="text-[11px] text-neutral-500 font-medium">Buat penawaran iklan khusus</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setLpForm({
+                        title: "",
+                        slug: "",
+                        status: "Draft",
+                        blocks: [
+                          {
+                            id: `block-${Math.random().toString(36).substr(2, 9)}`,
+                            type: "hero",
+                            content: {
+                              title: "Kembalikan Kilau Alami Wajah Anda",
+                              subtitle: "Formula esens premium untuk memperkuat skin barrier Anda dalam 14 hari.",
+                              cta_text: "Dapatkan Sekarang",
+                              bg_gradient: "from-[#faf8f5] to-[#f4ead4]",
+                              image_url: ""
+                            }
+                          }
+                        ]
+                      });
+                      setIsLpModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 bg-neutral-950 hover:bg-neutral-900 text-white rounded-xl font-bold uppercase tracking-widest text-[9px] transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Buat Baru
+                  </button>
+                </div>
+              </div>
+
+              {/* List Landing Pages */}
+              <div className="bg-white border border-[#eadecb] rounded-3xl luxury-card overflow-hidden">
+                <div className="p-6 border-b border-[#eadecb]/50 bg-[#fdfcf9] flex justify-between items-center">
+                  <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                    Kelola Halaman Penawaran Khusus (Landing Page)
+                  </h4>
+                </div>
+
+                {isLpsLoading ? (
+                  <div className="p-12 text-center text-xs text-[#c3a475] flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sedang memuat halaman...
+                  </div>
+                ) : landingPages.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-neutral-400 font-medium italic">
+                    Belum ada halaman landing. Silakan klik "Buat Baru" untuk memulai.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#eadecb]/60 bg-[#fdfcf9] text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          <th className="py-4 px-6">Nama Halaman</th>
+                          <th className="py-4 px-6">Slug/URL</th>
+                          <th className="py-4 px-6">Status</th>
+                          <th className="py-4 px-6">Jumlah Blok</th>
+                          <th className="py-4 px-6 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {landingPages.map((lp) => (
+                          <tr key={lp.id} className="border-b border-neutral-100 hover:bg-[#faf8f5]/50 transition-colors">
+                            <td className="py-4 px-6 font-semibold text-neutral-950">{lp.title}</td>
+                            <td className="py-4 px-6 font-mono text-[10px] text-neutral-500">
+                              <span className="bg-neutral-100 px-2 py-0.5 rounded text-neutral-600">/lp/{lp.slug}</span>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                lp.status === "Published" ? "bg-green-50 text-green-700 border border-green-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"
+                              }`}>
+                                {lp.status === "Published" ? "Published" : "Draft"}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 font-medium">{lp.blocks?.length || 0} blok</td>
+                            <td className="py-4 px-6">
+                              <div className="flex justify-end gap-2.5">
+                                <Link
+                                  href={`/lp/${lp.slug}`}
+                                  target="_blank"
+                                  className="p-1.5 hover:bg-[#f6f3ed] text-neutral-600 rounded transition-colors text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1 font-sans"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" /> Buka
+                                </Link>
+                                <button
+                                  onClick={() => {
+                                    setLpForm({
+                                      id: lp.id,
+                                      title: lp.title,
+                                      slug: lp.slug,
+                                      status: lp.status,
+                                      blocks: lp.blocks || []
+                                    });
+                                    setIsLpModalOpen(true);
+                                  }}
+                                  className="p-1.5 hover:bg-[#f6f3ed] text-[#c3a475] rounded transition-colors text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1 cursor-pointer font-sans"
+                                >
+                                  <Edit className="w-3.5 h-3.5" /> Ubah
+                                </button>
+                                <button
+                                  onClick={() => handleLpDelete(lp.id, lp.title)}
+                                  className="p-1.5 hover:bg-red-50 text-[#c3a475] rounded transition-colors text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1 cursor-pointer font-sans"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Hapus
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Leads Viewer */}
+              <div className="bg-white border border-[#eadecb] rounded-3xl luxury-card overflow-hidden">
+                <div className="p-6 border-b border-[#eadecb]/50 bg-[#fdfcf9] flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div>
+                    <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                      Daftar Masuk Leads & Konsultasi Pelanggan
+                    </h4>
+                    <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mt-1">
+                      Data leads dari formulir kontak landing page
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-neutral-400" />
+                      <input
+                        type="text"
+                        value={leadsSearch}
+                        onChange={(e) => setLeadsSearch(e.target.value)}
+                        placeholder="Cari leads..."
+                        className="pl-9 pr-4 py-2 border border-[#eadecb] bg-[#fdfcf9] text-xs rounded-xl focus:border-[#c3a475] outline-none text-neutral-800 font-medium w-48"
+                      />
+                    </div>
+                    <button
+                      onClick={handleExportLeadsCSV}
+                      disabled={leadsList.length === 0}
+                      className="px-4 py-2.5 border border-[#eadecb] hover:bg-[#f6f3ed] text-neutral-700 rounded-xl font-bold uppercase tracking-widest text-[9px] transition-colors flex items-center gap-1.5 cursor-pointer disabled:bg-neutral-50 disabled:text-neutral-350"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Ekspor CSV
+                    </button>
+                  </div>
+                </div>
+
+                {isLeadsLoading ? (
+                  <div className="p-12 text-center text-xs text-[#c3a475] flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sedang memuat leads...
+                  </div>
+                ) : leadsList.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-neutral-400 font-medium italic">
+                    Belum ada leads masuk dari landing page.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#eadecb]/60 bg-[#fdfcf9] text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          <th className="py-4 px-6">Nama</th>
+                          <th className="py-4 px-6">WhatsApp</th>
+                          <th className="py-4 px-6">Email</th>
+                          <th className="py-4 px-6">Pesan/Masalah</th>
+                          <th className="py-4 px-6">Halaman</th>
+                          <th className="py-4 px-6">Tanggal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leadsList
+                          .filter(lead => {
+                            const q = leadsSearch.toLowerCase();
+                            return (
+                              lead.name?.toLowerCase().includes(q) ||
+                              lead.whatsapp?.toLowerCase().includes(q) ||
+                              lead.lp_slug?.toLowerCase().includes(q) ||
+                              lead.email?.toLowerCase().includes(q) ||
+                              lead.message?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((lead) => (
+                            <tr key={lead.id} className="border-b border-neutral-100 hover:bg-[#faf8f5]/50 transition-colors">
+                              <td className="py-4 px-6 font-semibold text-neutral-950">{lead.name}</td>
+                              <td className="py-4 px-6">
+                                <a 
+                                  href={`https://wa.me/${lead.whatsapp.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  className="text-neutral-700 hover:underline font-mono text-[11px] font-semibold flex items-center gap-1"
+                                >
+                                  {lead.whatsapp}
+                                </a>
+                              </td>
+                              <td className="py-4 px-6 lowercase text-neutral-500 font-medium">{lead.email || "-"}</td>
+                              <td className="py-4 px-6 font-sans text-[11px] text-neutral-600 max-w-xs truncate" title={lead.message}>
+                                {lead.message || "-"}
+                              </td>
+                              <td className="py-4 px-6">
+                                <span className="bg-neutral-100 px-2 py-0.5 rounded text-neutral-600 font-mono text-[10px]">
+                                  /lp/{lead.lp_slug}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-neutral-400 text-[10px] font-semibold">{formatDate(lead.created_at)}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 11: MARKETING BLAST (EMAIL & WA) */}
+          {activeTab === "marketing_blast" && (
+            <motion.div
+              key="marketing-blast-content"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-8"
+            >
+              {/* Selector Subtab */}
+              <div className="flex border-b border-[#eadecb] gap-6 mb-6">
+                {[
+                  { id: "email", label: "Email Blast Simulator", icon: Mail },
+                  { id: "whatsapp", label: "WhatsApp Blast Simulator", icon: Smartphone }
+                ].map(b => (
+                  <button
+                    key={b.id}
+                    onClick={() => setBlastType(b.id as any)}
+                    className={`flex items-center gap-2 pb-3 text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer outline-none ${
+                      blastType === b.id ? "text-neutral-950 font-extrabold" : "text-neutral-400 hover:text-neutral-600"
+                    }`}
+                  >
+                    <b.icon className={`w-4 h-4 ${blastType === b.id ? "text-[#c3a475]" : "text-neutral-400"}`} />
+                    {b.label}
+                    {blastType === b.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#c3a475]" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {blastType === "email" ? (
+                // EMAIL BLAST SIMULATOR LAYOUT
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left form config */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <form onSubmit={handleStartEmailBlast} className="bg-white border border-[#eadecb] p-6 rounded-3xl luxury-card space-y-5">
+                      <h4 className="font-serif text-sm font-semibold text-[#1c1a17] pb-2 border-b border-neutral-100">
+                        Konfigurasi Kampanye Email
+                      </h4>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Subjek Email
+                        </label>
+                        <input
+                          type="text"
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          placeholder="Misal: Rahasia Kulit Radiant 14 Hari! ✨"
+                          required
+                          disabled={emailSendingStatus === "sending"}
+                          className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs animate-fadeIn"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Template Email
+                        </label>
+                        <select
+                          value={emailTemplate}
+                          onChange={(e: any) => setEmailTemplate(e.target.value)}
+                          disabled={emailSendingStatus === "sending"}
+                          className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 outline-none text-xs cursor-pointer"
+                        >
+                          <option value="promo">Promo Launching Produk Baru</option>
+                          <option value="newsletter">Buletin Mingguan Tips Cantik</option>
+                          <option value="discount">Diskon Eksklusif Anggota Royal (10%)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Target Audien
+                        </label>
+                        <select
+                          value={emailAudience}
+                          onChange={(e: any) => setEmailAudience(e.target.value)}
+                          disabled={emailSendingStatus === "sending"}
+                          className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 outline-none text-xs cursor-pointer"
+                        >
+                          <option value="all">Semua Customer (420 kontak)</option>
+                          <option value="royal">Anggota Royal Member (180 kontak)</option>
+                          <option value="active">Pelanggan Aktif 30 Hari Terakhir (240 kontak)</option>
+                          <option value="custom">Daftar Kontak Khusus (Input Manual)</option>
+                        </select>
+                      </div>
+
+                      {emailAudience === "custom" && (
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                            Daftar Kontak (Nama, Email - Satu per baris)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={emailCsvText}
+                            onChange={(e) => setEmailCsvText(e.target.value)}
+                            disabled={emailSendingStatus === "sending"}
+                            placeholder="Ayu, ayu@nexa.id&#10;Bimo, bimo@yahoo.com"
+                            className="w-full px-3 py-2 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs resize-none"
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-3 bg-[#f6f3ed]/60 rounded-xl border border-[#eadecb]/40 text-[10px] text-neutral-500 leading-normal space-y-1">
+                        <p className="font-bold text-neutral-700">💡 Tips Personalisasi:</p>
+                        <p>Gunakan tag berikut di subjek/isi email untuk personalisasi data pelanggan otomatis:</p>
+                        <ul className="list-disc pl-4 space-y-0.5 font-sans">
+                          <li><code className="bg-white px-1.5 py-0.5 rounded font-bold text-[#c3a475] font-mono">{`{customer_name}`}</code> - Nama lengkap pelanggan</li>
+                          <li><code className="bg-white px-1.5 py-0.5 rounded font-bold text-[#c3a475] font-mono">{`{discount_code}`}</code> - Kode voucher otomatis</li>
+                        </ul>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={emailSendingStatus === "sending" || !emailSubject}
+                        className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-neutral-300"
+                      >
+                        {emailSendingStatus === "sending" ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Mengirim Simulasi...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-3.5 h-3.5" />
+                            Kirim Email Blast
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right side simulator view */}
+                  <div className="lg:col-span-7 space-y-6">
+                    {/* Live Progress Simulator */}
+                    {(emailSendingStatus === "sending" || emailSendingStatus === "completed") && (
+                      <div className="bg-white border border-[#eadecb] p-6 rounded-3xl luxury-card space-y-5">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                            Proses Simulasi Pengiriman
+                          </h4>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            emailSendingStatus === "sending" ? "bg-amber-50 text-amber-600 border border-amber-200 animate-pulse" : "bg-green-50 text-green-700 border border-green-200"
+                          }`}>
+                            {emailSendingStatus === "sending" ? "Mengirim..." : "Selesai"}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                            <span>Progres Kirim</span>
+                            <span>{emailProgress}%</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden border border-[#eadecb]/30">
+                            <motion.div 
+                              className="h-full bg-gradient-to-r from-[#c3a475] to-neutral-900"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${emailProgress}%` }}
+                              transition={{ duration: 0.1 }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Stats Metrics (Simulated) */}
+                        {emailStats && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                            <div className="bg-[#faf8f5] border border-neutral-100 p-3.5 rounded-xl text-center shadow-sm">
+                              <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Delivered</span>
+                              <span className="font-serif text-base font-bold text-[#1c1a17]">{emailStats.delivered}%</span>
+                            </div>
+                            <div className="bg-[#faf8f5] border border-neutral-100 p-3.5 rounded-xl text-center shadow-sm">
+                              <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Open Rate</span>
+                              <span className="font-serif text-base font-bold text-[#c3a475]">{emailStats.openRate}%</span>
+                            </div>
+                            <div className="bg-[#faf8f5] border border-neutral-100 p-3.5 rounded-xl text-center shadow-sm">
+                              <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Click Rate</span>
+                              <span className="font-serif text-base font-bold text-amber-800">{emailStats.clickRate}%</span>
+                            </div>
+                            <div className="bg-[#faf8f5] border border-neutral-100 p-3.5 rounded-xl text-center shadow-sm">
+                              <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Konversi</span>
+                              <span className="font-serif text-base font-bold text-green-700">{emailStats.conversionRate}%</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Terminal Logger */}
+                        <div className="space-y-1.5">
+                          <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Console Logs Pengiriman</span>
+                          <div className="h-44 overflow-y-auto bg-neutral-950 text-[10px] text-green-400 font-mono p-4 rounded-xl space-y-1.5 border border-neutral-800 shadow-inner no-scrollbar">
+                            {emailLogs.length === 0 ? (
+                              <p className="text-neutral-500 italic">Mulai pengiriman untuk melihat log console...</p>
+                            ) : (
+                              emailLogs.map((log, i) => (
+                                <div key={i} className="flex gap-2.5 items-start">
+                                  <span className="text-neutral-600 font-bold shrink-0">[{log.time}]</span>
+                                  <span>{log.text}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Email Campaign History */}
+                    <div className="bg-white border border-[#eadecb] p-6 rounded-3xl luxury-card space-y-4">
+                      <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                        Riwayat Kampanye Email Blast
+                      </h4>
+                      {emailHistory.length === 0 ? (
+                        <p className="text-xs text-neutral-400 italic font-medium">Belum ada riwayat pengiriman email blast.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {emailHistory.map((h) => (
+                            <div key={h.id} className="p-4 border border-[#eadecb]/50 rounded-2xl bg-[#faf8f5] flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs font-sans">
+                              <div>
+                                <h5 className="font-semibold text-neutral-900 font-serif">{h.subject}</h5>
+                                <div className="flex gap-3 text-[10px] text-neutral-400 font-bold uppercase tracking-wider mt-1">
+                                  <span>Template: {h.template}</span>
+                                  <span>•</span>
+                                  <span>Terkirim: {formatDate(h.sentAt)}</span>
+                                </div>
+                              </div>
+                              <div className="flex gap-4 text-[10px] font-mono font-bold">
+                                <span className="text-neutral-500">Total: {h.stats.totalSent}</span>
+                                <span className="text-[#c3a475]">Opens: {h.stats.openRate}%</span>
+                                <span className="text-green-700">Convs: {h.stats.conversionRate}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // WHATSAPP BLAST SIMULATOR LAYOUT
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Form config */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <form onSubmit={handleStartWaBlast} className="bg-white border border-[#eadecb] p-6 rounded-3xl luxury-card space-y-5">
+                      <h4 className="font-serif text-sm font-semibold text-[#1c1a17] pb-2 border-b border-neutral-100">
+                        Konfigurasi Pesan WhatsApp
+                      </h4>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Pesan Kampanye WA
+                        </label>
+                        <textarea
+                          rows={5}
+                          value={waMessage}
+                          onChange={(e) => setWaMessage(e.target.value)}
+                          placeholder="Halo {customer_name}, dapatkan penawaran esens eksklusif hari ini! Masukkan kode voucher {discount_code} untuk diskon 10%."
+                          required
+                          disabled={waSendingStatus === "sending"}
+                          className="w-full px-3 py-2 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs resize-none leading-relaxed"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          URL Lampiran Gambar (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          value={waImage}
+                          onChange={(e) => setWaImage(e.target.value)}
+                          placeholder="https://images.unsplash.com/photo-..."
+                          disabled={waSendingStatus === "sending"}
+                          className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Target Penerima WA
+                        </label>
+                        <select
+                          value={waAudience}
+                          onChange={(e: any) => setWaAudience(e.target.value)}
+                          disabled={waSendingStatus === "sending"}
+                          className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 outline-none text-xs cursor-pointer"
+                        >
+                          <option value="all">Semua Kontak Customer (420 nomor)</option>
+                          <option value="royal">Anggota Royal Member (180 nomor)</option>
+                          <option value="active">Pelanggan Aktif 30 Hari Terakhir (240 nomor)</option>
+                          <option value="custom">Daftar Kontak Khusus (Input Manual)</option>
+                        </select>
+                      </div>
+
+                      {waAudience === "custom" && (
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                            Nomor Penerima (Nama, Nomor Telepon - Satu per baris)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={waCsvText}
+                            onChange={(e) => setWaCsvText(e.target.value)}
+                            disabled={waSendingStatus === "sending"}
+                            placeholder="Ayu, 08123456789&#10;Bimo, 08198765432"
+                            className="w-full px-3 py-2 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs resize-none"
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-3 bg-[#f6f3ed]/60 rounded-xl border border-[#eadecb]/40 text-[10px] text-neutral-500 leading-normal space-y-1">
+                        <p className="font-bold text-neutral-700">💡 Variabel Personalisasi:</p>
+                        <p>Dukung tag otomatis berikut dalam pesan:</p>
+                        <ul className="list-disc pl-4 space-y-0.5 font-sans">
+                          <li><code className="bg-white px-1.5 py-0.5 rounded font-bold text-[#c3a475] font-mono">{`{customer_name}`}</code> - Nama Lengkap</li>
+                          <li><code className="bg-white px-1.5 py-0.5 rounded font-bold text-[#c3a475] font-mono">{`{discount_code}`}</code> - NEXAROYAL10</li>
+                        </ul>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={waSendingStatus === "sending" || !waMessage}
+                        className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-neutral-300"
+                      >
+                        {waSendingStatus === "sending" ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Mengirim Simulasi...
+                          </>
+                        ) : (
+                          <>
+                            <Smartphone className="w-3.5 h-3.5" />
+                            Kirim WA Blast
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right side live simulated smartphone and logs */}
+                  <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Simulated Smartphone Preview (6 cols) */}
+                    <div className="md:col-span-6 flex justify-center">
+                      <div className="relative w-full max-w-[280px] h-[500px] border-[10px] border-neutral-950 bg-[#efeae2] rounded-[36px] shadow-2xl overflow-hidden flex flex-col">
+                        {/* Speaker & camera slot */}
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-4 bg-neutral-950 rounded-b-xl z-20 flex items-center justify-center gap-1.5">
+                          <div className="w-8 h-1 bg-neutral-800 rounded-full" />
+                          <div className="w-2 h-2 bg-neutral-900 rounded-full" />
+                        </div>
+
+                        {/* WhatsApp App Mock Header */}
+                        <div className="pt-6 pb-2.5 px-3 bg-[#075e54] text-white flex items-center gap-2.5 z-10 shrink-0 shadow-md">
+                          <div className="w-6 h-6 rounded-full bg-teal-800 flex items-center justify-center text-[9px] font-bold uppercase border border-teal-600">
+                            N
+                          </div>
+                          <div>
+                            <h5 className="text-[10px] font-semibold leading-none">NEXAMART INFO</h5>
+                            <p className="text-[7px] text-teal-200 font-bold uppercase tracking-widest mt-0.5">Online</p>
+                          </div>
+                        </div>
+
+                        {/* WhatsApp Mock Chat Screen */}
+                        <div className="flex-grow p-3 bg-[#efeae2] overflow-y-auto space-y-3 flex flex-col-reverse justify-start no-scrollbar relative">
+                          <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', backgroundSize: 'contain' }} />
+
+                          {waChatMessages.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-center p-4">
+                              <p className="text-[10px] text-neutral-400 font-sans italic">
+                                Belum ada simulasi pesan dikirim. Konfigurasikan form kiri dan klik "Kirim WA Blast".
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 z-10 w-full flex flex-col justify-end">
+                              {waChatMessages.map((msg) => (
+                                <div key={msg.id} className="bg-white border border-[#e2d8c3] rounded-2xl rounded-tr-none p-3 max-w-[90%] shadow-sm self-end text-neutral-800 font-sans text-[10px] space-y-1.5 animate-fadeIn">
+                                  {msg.image && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={msg.image} alt="Attachment" className="w-full h-24 object-cover rounded-lg" />
+                                  )}
+                                  <p className="font-semibold text-teal-800 text-[8px] leading-none mb-1">Ke: {msg.recipientName} ({msg.number})</p>
+                                  <p className="leading-relaxed whitespace-pre-wrap font-medium">{msg.text}</p>
+                                  <span className="block text-right text-[7px] text-neutral-400 font-bold">{msg.time} ✓✓</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logs and Stats (6 cols) */}
+                    <div className="md:col-span-6 space-y-6">
+                      {/* Live Progress */}
+                      {(waSendingStatus === "sending" || waSendingStatus === "completed") && (
+                        <div className="bg-white border border-[#eadecb] p-4.5 rounded-2xl shadow-sm space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h5 className="font-serif text-xs font-semibold text-[#1c1a17]">
+                              Progres WhatsApp Blast
+                            </h5>
+                            <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-200">
+                              {waSendingStatus === "sending" ? "Mengirim..." : "Selesai"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden border border-[#eadecb]/20">
+                              <motion.div 
+                                className="h-full bg-teal-650"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${waProgress}%` }}
+                                transition={{ duration: 0.1 }}
+                              />
+                            </div>
+                            <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest">{waProgress}% Terkirim</span>
+                          </div>
+
+                          {/* Terminal Logger */}
+                          <div className="space-y-1">
+                            <span className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider">Console Logs</span>
+                            <div className="h-32 overflow-y-auto bg-neutral-950 text-[9px] text-[#22c55e] font-mono p-3 rounded-lg space-y-1 border border-neutral-800 no-scrollbar">
+                              {waLogs.map((log, idx) => (
+                                <div key={idx} className="flex gap-1.5 items-start">
+                                  <span className="text-neutral-600 shrink-0 font-bold">[{log.time}]</span>
+                                  <span>{log.text}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* WA Campaign History */}
+                      <div className="bg-white border border-[#eadecb] p-4.5 rounded-2xl shadow-sm space-y-3 animate-fadeIn">
+                        <h5 className="font-serif text-xs font-semibold text-[#1c1a17]">
+                          Riwayat WhatsApp Blast
+                        </h5>
+                        {waHistory.length === 0 ? (
+                          <p className="text-[10px] text-neutral-400 italic font-medium">Belum ada riwayat WA Blast.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {waHistory.map((h) => (
+                              <div key={h.id} className="p-3 border border-[#eadecb]/30 rounded-xl bg-[#faf8f5] text-[10px] font-sans">
+                                <p className="font-semibold text-neutral-800 truncate">{h.message}</p>
+                                <div className="flex justify-between text-[8px] text-neutral-400 font-bold uppercase tracking-wider mt-1">
+                                  <span>Audien: {h.audience}</span>
+                                  <span>Terkirim: {formatDate(h.sentAt)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* TAB 12: ROOT ACCESS & MULTI-ROLE */}
+          {activeTab === "root_access" && (
+            <motion.div
+              key="root-access-content"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-8"
+            >
+              {/* Alert Warning Root Access */}
+              <div className="p-4 bg-[#fdfaf2] border border-[#eadecb] rounded-2xl flex items-start gap-3 max-w-3xl animate-fadeIn">
+                <ShieldAlert className="w-5 h-5 text-[#c3a475] shrink-0 mt-0.5" />
+                <div className="text-xs text-neutral-700 leading-normal">
+                  <span className="font-bold text-neutral-900 block mb-0.5">Pusat Manajemen Root Access & Hak Istimewa Admin:</span>
+                  Hanya peran <strong>Owner</strong> dan <strong>Admin</strong> utama yang dapat mendaftarkan, mengubah password, atau menghapus akun administrator. Setiap aktivitas pencatatan log audit akan terekam secara otomatis di database.
+                </div>
+              </div>
+
+              {/* Grid 2 Column Form vs Table Accounts */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Form Account */}
+                <div className="lg:col-span-4">
+                  <form onSubmit={handleAccountSubmit} className="bg-white border border-[#eadecb] p-6 rounded-3xl luxury-card space-y-5 shadow-sm animate-fadeIn">
+                    <h4 className="font-serif text-sm font-semibold text-[#1c1a17] pb-2 border-b border-neutral-100">
+                      Tambah / Ubah Akun Admin
+                    </h4>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Username Admin
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccUsername}
+                        onChange={(e) => setNewAccUsername(e.target.value)}
+                        placeholder="Contoh: ratih_admin"
+                        required
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs font-semibold"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Peran / Hak Akses (Role)
+                      </label>
+                      <select
+                        value={newAccRole}
+                        onChange={(e: any) => setNewAccRole(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 outline-none text-xs cursor-pointer font-semibold"
+                      >
+                        <option value="Owner">Owner (Akses Penuh)</option>
+                        <option value="Admin">Admin (Kelola Produk & Jurnal)</option>
+                        <option value="Manager">Manager (Kelola Voucher & AI)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Kata Sandi (Password)
+                      </label>
+                      <input
+                        type="password"
+                        value={newAccPassword}
+                        onChange={(e) => setNewAccPassword(e.target.value)}
+                        placeholder="Minimal 6 karakter..."
+                        required
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none text-xs font-semibold"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isAccSubmitting || !newAccUsername || !newAccPassword}
+                      className="w-full py-3.5 bg-neutral-950 hover:bg-neutral-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-neutral-300"
+                    >
+                      {isAccSubmitting ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Menyimpan Akun...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          Simpan Akun Admin
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Table Accounts List */}
+                <div className="lg:col-span-8 bg-white border border-[#eadecb] rounded-3xl luxury-card overflow-hidden">
+                  <div className="p-6 border-b border-[#eadecb]/50 bg-[#fdfcf9]">
+                    <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                      Daftar Akun Administrator Aktif
+                    </h4>
+                  </div>
+
+                  {isAdminAccountsLoading ? (
+                    <div className="p-12 text-center text-xs text-[#c3a475] flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Sedang memuat akun...
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-[#eadecb]/60 bg-[#fdfcf9] text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                            <th className="py-4 px-6">Username</th>
+                            <th className="py-4 px-6">Peran (Role)</th>
+                            <th className="py-4 px-6">Dibuat Pada</th>
+                            <th className="py-4 px-6 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminAccountsList.map((acc) => (
+                            <tr key={acc.id} className="border-b border-neutral-100 hover:bg-[#faf8f5]/50 transition-colors">
+                              <td className="py-4 px-6 font-semibold text-neutral-950">{acc.username}</td>
+                              <td className="py-4 px-6">
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                  acc.role === "Owner" ? "bg-[#fcf7ee] text-amber-800 border border-amber-200 font-bold" :
+                                  acc.role === "Admin" ? "bg-blue-50 text-blue-700 border border-blue-200 font-bold" :
+                                  "bg-neutral-100 text-neutral-500 border border-neutral-200 font-bold"
+                                }`}>
+                                  {acc.role}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-neutral-400 font-semibold">{formatDate(acc.created_at)}</td>
+                              <td className="py-4 px-6">
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={() => handleAccountDelete(acc.id, acc.username)}
+                                    disabled={acc.username === "owner" || acc.id === "1"}
+                                    className="p-1.5 hover:bg-red-50 text-red-650 rounded transition-colors text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed font-sans"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> Hapus
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom full-width Log Aktivitas Audit */}
+              <div className="bg-white border border-[#eadecb] rounded-3xl luxury-card overflow-hidden animate-fadeIn">
+                <div className="p-6 border-b border-[#eadecb]/50 bg-[#fdfcf9]">
+                  <h4 className="font-serif text-sm font-semibold text-[#1c1a17]">
+                    Log Audit Aktivitas Administrator (Audit Logs)
+                  </h4>
+                  <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mt-1">
+                    Histori tindakan administratif real-time di sistem
+                  </p>
+                </div>
+
+                {isAdminLogsLoading ? (
+                  <div className="p-12 text-center text-xs text-[#c3a475] flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sedang memuat log...
+                  </div>
+                ) : adminLogsList.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-neutral-400 font-medium italic">
+                    Belum ada log aktivitas yang tercatat.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto max-h-80 overflow-y-auto no-scrollbar">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#eadecb]/60 bg-[#fdfcf9] sticky top-0 text-[10px] font-bold text-neutral-400 uppercase tracking-widest z-10">
+                          <th className="py-4 px-6 bg-[#fdfcf9]">Timestamp</th>
+                          <th className="py-4 px-6 bg-[#fdfcf9]">Username</th>
+                          <th className="py-4 px-6 bg-[#fdfcf9]">Role</th>
+                          <th className="py-4 px-6 bg-[#fdfcf9]">Aksi / Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminLogsList.map((log) => (
+                          <tr key={log.id} className="border-b border-neutral-100 hover:bg-[#faf8f5]/50 transition-colors">
+                            <td className="py-3 px-6 text-neutral-400 font-mono text-[10px]">{formatDate(log.created_at)}</td>
+                            <td className="py-3 px-6 font-semibold text-neutral-900">{log.username}</td>
+                            <td className="py-3 px-6 text-[10px] uppercase font-bold text-[#c3a475]">{log.role}</td>
+                            <td className="py-3 px-6 font-sans text-neutral-600 font-medium">{log.action}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -3399,6 +4871,1092 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LANDING PAGE BUILDER MODAL (ADD / EDIT) */}
+      <AnimatePresence>
+        {isLpModalOpen && (
+          <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-6xl border border-[#eadecb] rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[90vh] luxury-border animate-fadeIn"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-[#eadecb]/50 flex justify-between items-center bg-[#fdfcf9]">
+                <div>
+                  <h3 className="font-serif text-lg text-neutral-900 tracking-wide">
+                    {lpForm.id ? "Ubah Landing Page" : "Buat Landing Page Baru"}
+                  </h3>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">
+                    Modul Simulator & Landing Page Builder
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                      Status
+                    </label>
+                    <select
+                      value={lpForm.status}
+                      onChange={(e) => setLpForm(prev => ({ ...prev, status: e.target.value as "Draft" | "Published" }))}
+                      className="px-3 py-1.5 border border-[#eadecb] bg-white rounded-xl text-xs font-semibold outline-none cursor-pointer"
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Published">Published</option>
+                    </select>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setIsLpModalOpen(false)}
+                    className="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body Layout: Split Screen */}
+              <div className="flex-1 flex overflow-hidden">
+                {/* Left Side: Editor Form */}
+                <div className="w-[45%] border-r border-[#eadecb]/40 overflow-y-auto p-6 space-y-6">
+                  {/* Meta Settings */}
+                  <div className="bg-[#fdfcf9] border border-[#eadecb]/60 p-4 rounded-2xl space-y-4">
+                    <h4 className="text-[10px] font-bold text-[#c3a475] uppercase tracking-widest">
+                      Pengaturan Meta Halaman
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Judul Halaman (Campaign Name)
+                        </label>
+                        <input
+                          type="text"
+                          value={lpForm.title}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setLpForm(prev => ({
+                              ...prev,
+                              title: val,
+                              slug: prev.id ? prev.slug : val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+                            }));
+                          }}
+                          placeholder="Masukkan judul kampanye..."
+                          className="w-full px-3 py-2 border border-[#eadecb] bg-white rounded-xl text-xs text-neutral-800 focus:border-[#c3a475] outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
+                          Slug URL
+                        </label>
+                        <div className="flex gap-2">
+                          <span className="self-center text-[10px] font-mono text-neutral-400">/lp/</span>
+                          <input
+                            type="text"
+                            value={lpForm.slug}
+                            onChange={(e) => setLpForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                            placeholder="nama-slug-url"
+                            className="flex-1 px-3 py-2 border border-[#eadecb] bg-white rounded-xl text-xs font-mono text-neutral-800 focus:border-[#c3a475] outline-none"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setLpForm(prev => ({
+                              ...prev,
+                              slug: prev.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+                            }))}
+                            className="px-3 py-1.5 border border-[#eadecb] rounded-xl text-[9px] font-bold uppercase tracking-widest text-neutral-500 hover:bg-neutral-50 cursor-pointer"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add Block */}
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">
+                      Tambah Blok Konten
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-[9px] font-bold tracking-widest uppercase">
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("hero")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-[#c3a475]" /> Hero Section
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("product_spotlight")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5 text-[#c3a475]" /> Sorotan Produk
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("benefits")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <Check className="w-3.5 h-3.5 text-[#c3a475]" /> Manfaat Klinis
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("testimonials")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-[#c3a475]" /> Testimoni
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("faq")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-[#c3a475]" /> Tanya Jawab (FAQ)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addLpBlock("lead_form")}
+                        className="py-2.5 border border-[#eadecb] rounded-xl hover:bg-[#faf8f5] flex items-center justify-center gap-1.5 cursor-pointer text-neutral-700 font-bold"
+                      >
+                        <Users className="w-3.5 h-3.5 text-[#c3a475]" /> Formulir Lead
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Block Editor list */}
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">
+                      Struktur Blok Halaman ({lpForm.blocks?.length || 0} Blok)
+                    </h4>
+                    {(!lpForm.blocks || lpForm.blocks.length === 0) ? (
+                      <div className="p-8 text-center text-xs text-neutral-400 border border-dashed border-[#eadecb] rounded-2xl">
+                        Belum ada blok. Silakan tambah blok dari pilihan di atas.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {lpForm.blocks.map((block, idx) => {
+                          const { id, type, content } = block;
+                          return (
+                            <div 
+                              key={id}
+                              className="border border-[#eadecb] rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              {/* Block Header */}
+                              <div className="p-3 bg-[#fdfcf9] border-b border-[#eadecb]/50 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-neutral-700">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 font-mono text-[9px]">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="text-[#1c1a17]">
+                                    {type === "hero" ? "Hero Banner" :
+                                     type === "product_spotlight" ? "Sorotan Produk" :
+                                     type === "benefits" ? "Daftar Manfaat" :
+                                     type === "testimonials" ? "Ulasan / Testimoni" :
+                                     type === "faq" ? "Pertanyaan (FAQ)" :
+                                     type === "lead_form" ? "Formulir Registrasi Lead" : type}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveLpBlock(idx, "up")}
+                                    disabled={idx === 0}
+                                    className="p-1 hover:bg-neutral-100 rounded disabled:opacity-30 text-neutral-500 cursor-pointer font-bold text-xs"
+                                    title="Pindahkan Ke Atas"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveLpBlock(idx, "down")}
+                                    disabled={idx === lpForm.blocks.length - 1}
+                                    className="p-1 hover:bg-neutral-100 rounded disabled:opacity-30 text-neutral-500 cursor-pointer font-bold text-xs"
+                                    title="Pindahkan Ke Bawah"
+                                  >
+                                    ↓
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLpBlock(id)}
+                                    className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded cursor-pointer"
+                                    title="Hapus Blok"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Block Form Content */}
+                              <div className="p-4 space-y-3 text-xs text-neutral-700">
+                                {type === "hero" && (
+                                  <>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Utama</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Sub-Judul / Penjelasan</label>
+                                      <textarea 
+                                        rows={2} 
+                                        value={content.subtitle || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { subtitle: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none resize-none"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Teks Tombol CTA</label>
+                                        <input 
+                                          type="text" 
+                                          value={content.cta_text || ""} 
+                                          onChange={(e) => updateLpBlockContent(id, { cta_text: e.target.value })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Background Gradient</label>
+                                        <select 
+                                          value={content.bg_gradient || "from-[#faf8f5] to-[#f4ead4]"} 
+                                          onChange={(e) => updateLpBlockContent(id, { bg_gradient: e.target.value })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none cursor-pointer"
+                                        >
+                                          <option value="from-[#faf8f5] to-[#f4ead4]">Gold Cream</option>
+                                          <option value="from-[#ffffff] to-[#faf8f5]">Ivory Soft</option>
+                                          <option value="from-[#f7f5f0] to-[#eadecb]">Vintage Earth</option>
+                                          <option value="from-[#fdfbf7] to-[#fcf5e3]">Luxe Champagne</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">URL Gambar Produk</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.image_url || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { image_url: e.target.value })}
+                                        placeholder="Kosongkan untuk menggunakan gambar bawaan"
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none font-mono"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                {type === "product_spotlight" && (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Nama Produk</label>
+                                        <input 
+                                          type="text" 
+                                          value={content.name || ""} 
+                                          onChange={(e) => updateLpBlockContent(id, { name: e.target.value })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Harga Khusus (Rp)</label>
+                                        <input 
+                                          type="number" 
+                                          value={content.price || ""} 
+                                          onChange={(e) => updateLpBlockContent(id, { price: Number(e.target.value) })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Sorotan</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Deskripsi Sorotan</label>
+                                      <textarea 
+                                        rows={2} 
+                                        value={content.description || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { description: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none resize-none"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Teks Tombol Beli</label>
+                                        <input 
+                                          type="text" 
+                                          value={content.btn_text || ""} 
+                                          onChange={(e) => updateLpBlockContent(id, { btn_text: e.target.value })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Varian Produk</label>
+                                        <input 
+                                          type="text" 
+                                          value={content.variant || ""} 
+                                          onChange={(e) => updateLpBlockContent(id, { variant: e.target.value })}
+                                          className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">URL Gambar Sorotan</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.image_url || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { image_url: e.target.value })}
+                                        placeholder="Kosongkan untuk menggunakan gambar bawaan"
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none font-mono"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                {type === "benefits" && (
+                                  <>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Bagian Manfaat</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="block text-[8px] font-bold text-[#c3a475] uppercase tracking-widest">Daftar Item Manfaat</label>
+                                      <div className="space-y-2">
+                                        {(content.items || []).map((item: any, i: number) => (
+                                          <div key={i} className="p-2 border border-[#eadecb]/60 bg-[#faf8f5] rounded-xl space-y-1 relative">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const items = (content.items || []).filter((_: any, idx: number) => idx !== i);
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="absolute top-2 right-2 text-red-400 hover:text-red-600 font-bold text-xs"
+                                              title="Hapus Manfaat"
+                                            >
+                                              ×
+                                            </button>
+                                            <input 
+                                              type="text" 
+                                              value={item.title || ""} 
+                                              placeholder="Judul Manfaat"
+                                              onChange={(e) => {
+                                                const items = [...(content.items || [])];
+                                                items[i] = { ...items[i], title: e.target.value };
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="w-[90%] px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none font-semibold"
+                                            />
+                                            <textarea 
+                                              rows={1.5}
+                                              value={item.desc || ""} 
+                                              placeholder="Penjelasan singkat..."
+                                              onChange={(e) => {
+                                                const items = [...(content.items || [])];
+                                                items[i] = { ...items[i], desc: e.target.value };
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="w-full px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none resize-none"
+                                            />
+                                          </div>
+                                        ))}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const items = [...(content.items || []), { title: "Manfaat Baru", desc: "Deskripsi singkat..." }];
+                                            updateLpBlockContent(id, { items });
+                                          }}
+                                          className="text-[9px] font-bold text-[#c3a475] uppercase tracking-wider hover:underline animate-pulse"
+                                        >
+                                          + Tambah Manfaat
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+
+                                {type === "testimonials" && (
+                                  <>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Bagian Testimoni</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="block text-[8px] font-bold text-[#c3a475] uppercase tracking-widest">Daftar Review Pelanggan</label>
+                                      <div className="space-y-2">
+                                        {(content.items || []).map((item: any, i: number) => (
+                                          <div key={i} className="p-2 border border-[#eadecb]/60 bg-[#faf8f5] rounded-xl space-y-1 relative">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const items = (content.items || []).filter((_: any, idx: number) => idx !== i);
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="absolute top-2 right-2 text-red-400 hover:text-red-600 font-bold text-xs"
+                                              title="Hapus Testimoni"
+                                            >
+                                              ×
+                                            </button>
+                                            <textarea 
+                                              rows={1.5}
+                                              value={item.quote || ""} 
+                                              placeholder="Ulasan pelanggan..."
+                                              onChange={(e) => {
+                                                const items = [...(content.items || [])];
+                                                items[i] = { ...items[i], quote: e.target.value };
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="w-[90%] px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none resize-none font-serif italic"
+                                            />
+                                            <div className="flex gap-2">
+                                              <input 
+                                                type="text" 
+                                                value={item.author || ""} 
+                                                placeholder="Nama Pelanggan"
+                                                onChange={(e) => {
+                                                  const items = [...(content.items || [])];
+                                                  items[i] = { ...items[i], author: e.target.value };
+                                                  updateLpBlockContent(id, { items });
+                                                }}
+                                                className="w-2/3 px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none"
+                                              />
+                                              <select
+                                                value={item.rating || 5}
+                                                onChange={(e) => {
+                                                  const items = [...(content.items || [])];
+                                                  items[i] = { ...items[i], rating: Number(e.target.value) };
+                                                  updateLpBlockContent(id, { items });
+                                                }}
+                                                className="w-1/3 px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none cursor-pointer"
+                                              >
+                                                <option value="5">⭐⭐⭐⭐⭐</option>
+                                                <option value="4">⭐⭐⭐⭐</option>
+                                                <option value="3">⭐⭐⭐</option>
+                                              </select>
+                                            </div>
+                                          </div>
+                                        ))}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const items = [...(content.items || []), { quote: "Ulasan baru...", author: "Nama Pengguna", rating: 5 }];
+                                            updateLpBlockContent(id, { items });
+                                          }}
+                                          className="text-[9px] font-bold text-[#c3a475] uppercase tracking-wider hover:underline animate-pulse"
+                                        >
+                                          + Tambah Review
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+
+                                {type === "faq" && (
+                                  <>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Bagian FAQ</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="block text-[8px] font-bold text-[#c3a475] uppercase tracking-widest">Daftar Pertanyaan & Jawaban</label>
+                                      <div className="space-y-2">
+                                        {(content.items || []).map((item: any, i: number) => (
+                                          <div key={i} className="p-2 border border-[#eadecb]/60 bg-[#faf8f5] rounded-xl space-y-1 relative">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const items = (content.items || []).filter((_: any, idx: number) => idx !== i);
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="absolute top-2 right-2 text-red-400 hover:text-red-600 font-bold text-xs"
+                                              title="Hapus FAQ"
+                                            >
+                                              ×
+                                            </button>
+                                            <input 
+                                              type="text" 
+                                              value={item.q || ""} 
+                                              placeholder="Pertanyaan?"
+                                              onChange={(e) => {
+                                                const items = [...(content.items || [])];
+                                                items[i] = { ...items[i], q: e.target.value };
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="w-[90%] px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none font-semibold"
+                                            />
+                                            <textarea 
+                                              rows={2}
+                                              value={item.a || ""} 
+                                              placeholder="Jawaban..."
+                                              onChange={(e) => {
+                                                const items = [...(content.items || [])];
+                                                items[i] = { ...items[i], a: e.target.value };
+                                                updateLpBlockContent(id, { items });
+                                              }}
+                                              className="w-full px-1.5 py-0.5 border border-neutral-200 bg-white rounded text-xs outline-none resize-none"
+                                            />
+                                          </div>
+                                        ))}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const items = [...(content.items || []), { q: "Pertanyaan Baru?", a: "Jawaban pertanyaan." }];
+                                            updateLpBlockContent(id, { items });
+                                          }}
+                                          className="text-[9px] font-bold text-[#c3a475] uppercase tracking-wider hover:underline animate-pulse"
+                                        >
+                                          + Tambah FAQ
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+
+                                {type === "lead_form" && (
+                                  <>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Judul Formulir</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.title || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { title: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Deskripsi / Sub-judul</label>
+                                      <textarea 
+                                        rows={2} 
+                                        value={content.subtitle || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { subtitle: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none resize-none"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Teks Tombol Kirim</label>
+                                      <input 
+                                        type="text" 
+                                        value={content.btn_text || ""} 
+                                        onChange={(e) => updateLpBlockContent(id, { btn_text: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-[#eadecb] rounded-lg bg-[#faf8f5] text-xs outline-none"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Side: Interactive Preview */}
+                <div className="w-[55%] bg-neutral-50 flex flex-col overflow-hidden select-none">
+                  {/* Selector Bar */}
+                  <div className="p-4 border-b border-[#eadecb]/40 bg-white flex justify-between items-center shrink-0">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                      Live Preview Simulator
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLpPreviewMode("desktop")}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 ${
+                          lpPreviewMode === "desktop"
+                            ? "bg-neutral-900 text-white"
+                            : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                        }`}
+                      >
+                        <Globe className="w-3 h-3" /> Desktop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLpPreviewMode("mobile")}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 ${
+                          lpPreviewMode === "mobile"
+                            ? "bg-neutral-900 text-white"
+                            : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                        }`}
+                      >
+                        <Smartphone className="w-3 h-3" /> Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Simulator Area */}
+                  <div className="flex-1 overflow-y-auto p-8 flex items-start justify-center">
+                    {lpPreviewMode === "desktop" ? (
+                      /* Desktop Simulator View */
+                      <div className="w-full bg-white border border-[#eadecb] rounded-2xl shadow-lg overflow-hidden flex flex-col min-h-[600px]">
+                        {/* Browser Bar */}
+                        <div className="bg-[#fcfbf9] px-4 py-2 border-b border-[#eadecb]/50 flex items-center gap-2 shrink-0">
+                          <div className="flex gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                          </div>
+                          <div className="flex-1 bg-white border border-[#eadecb]/30 rounded px-3 py-0.5 text-[9px] text-neutral-400 font-mono flex items-center justify-between">
+                            <span>nexamart.com/lp/{lpForm.slug || "nama-slug-url"}</span>
+                            <span className="text-[8px] bg-green-50 text-green-600 px-1 rounded font-bold uppercase">Public</span>
+                          </div>
+                        </div>
+
+                        {/* Rendering Page Content inside simulated viewport */}
+                        <div className="flex-1 bg-[#fdfcf9] overflow-y-auto text-neutral-800 text-left">
+                          <header className="border-b border-[#eadecb]/40 bg-white/70 backdrop-blur-md px-6 py-4 flex justify-between items-center">
+                            <span className="font-serif text-xs font-bold tracking-[0.2em] text-[#1c1a17]">
+                              NEXAMART
+                            </span>
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 border border-neutral-200 px-3 py-1 rounded-full">
+                              Pesan Sekarang
+                            </span>
+                          </header>
+
+                          <main>
+                            {(!lpForm.blocks || lpForm.blocks.length === 0) ? (
+                              <div className="py-24 text-center text-xs text-neutral-400 font-sans italic">
+                                Preview kosong. Tambahkan blok konten di panel kiri untuk mulai mendesain.
+                              </div>
+                            ) : (
+                              lpForm.blocks.map((block) => {
+                                const { id, type, content } = block;
+                                return (
+                                  <div key={id} className="relative group border-b border-neutral-100/50">
+                                    {/* Component Indicator Badge */}
+                                    <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900/80 text-white text-[7px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
+                                      {type} Block
+                                    </div>
+
+                                    {type === "hero" && (
+                                      <section className={`bg-gradient-to-br ${content.bg_gradient || "from-[#faf8f5] to-[#f4ead4]"} py-10 px-8 grid grid-cols-2 gap-4 items-center`}>
+                                        <div className="space-y-3">
+                                          <div className="flex items-center gap-1 text-[#c3a475] text-[8px] font-bold uppercase tracking-widest">
+                                            <Sparkles className="w-3 h-3 animate-pulse" /> Penawaran Eksklusif
+                                          </div>
+                                          <h1 className="font-serif text-lg font-light text-neutral-900 leading-tight">
+                                            {content.title || "Kembalikan Kilau Alami Wajah Anda"}
+                                          </h1>
+                                          <p className="text-[10px] text-neutral-500 leading-relaxed">
+                                            {content.subtitle || "Formula esens premium untuk memperkuat skin barrier Anda."}
+                                          </p>
+                                          <span className="inline-block px-5 py-2 bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-widest rounded-full shadow-sm">
+                                            {content.cta_text || "Dapatkan Sekarang"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-center">
+                                          <div className="w-36 h-36 rounded-2xl overflow-hidden border border-[#eadecb]/50 shadow bg-white p-2">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                              src={content.image_url || "https://images.unsplash.com/photo-1608248597481-496100c8c836?w=600&auto=format&fit=crop&q=60"}
+                                              alt="Preview Hero"
+                                              className="w-full h-full object-cover rounded-xl"
+                                            />
+                                          </div>
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "product_spotlight" && (
+                                      <section className="py-10 px-8 bg-white grid grid-cols-2 gap-4 items-center">
+                                        <div className="flex justify-center">
+                                          <div className="w-28 h-36 rounded-xl overflow-hidden shadow-sm">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                              src={content.image_url || "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=60"}
+                                              alt="Preview Spotlight"
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                          <span className="text-[7px] font-bold uppercase tracking-widest text-[#c3a475] bg-[#f6f3ed] px-2 py-0.5 rounded-full inline-block">Sorotan Produk</span>
+                                          <h2 className="font-serif text-sm font-light text-neutral-900 leading-snug">
+                                            {content.title || "Mengapa Memilih Kami?"}
+                                          </h2>
+                                          <p className="text-[10px] text-neutral-500 leading-relaxed">
+                                            {content.description || "Diformulasikan secara ilmiah untuk menghidrasi kulit secara mendalam."}
+                                          </p>
+                                          {content.price && (
+                                            <div className="text-xs font-serif font-bold text-amber-800">
+                                              {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(content.price)}
+                                            </div>
+                                          )}
+                                          <span className="inline-block px-5 py-2 bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-widest rounded-full shadow-sm">
+                                            {content.btn_text || "Beli Sekarang"}
+                                          </span>
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "benefits" && (
+                                      <section className="py-10 px-8 bg-[#fdfcf9]">
+                                        <h2 className="font-serif text-sm font-light text-neutral-950 text-center mb-6">
+                                          {content.title || "Manfaat Hasil Studi Klinis"}
+                                        </h2>
+                                        <div className="grid grid-cols-3 gap-3">
+                                          {(content.items || []).map((benefit: any, idx: number) => (
+                                            <div key={idx} className="bg-white border border-[#eadecb] p-3 rounded-xl space-y-1">
+                                              <div className="w-5 h-5 rounded-full bg-[#f6f3ed] flex items-center justify-center text-[#c3a475] text-[9px] font-bold">
+                                                ✓
+                                              </div>
+                                              <h4 className="font-serif text-[10px] font-semibold text-neutral-900 leading-tight">
+                                                {benefit.title || "Manfaat"}
+                                              </h4>
+                                              <p className="text-neutral-400 text-[8px] leading-relaxed">
+                                                {benefit.desc || "Deskripsi..."}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "testimonials" && (
+                                      <section className="py-10 px-8 bg-white space-y-6">
+                                        <h3 className="font-serif text-xs text-center font-light text-neutral-900">
+                                          {content.title || "Apa Kata Pelanggan Setia"}
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          {(content.items || []).map((testi: any, idx: number) => (
+                                            <div key={idx} className="bg-[#fdfcf9] border border-[#eadecb]/50 p-4 rounded-xl space-y-2">
+                                              <div className="text-amber-500 text-[8px] flex gap-0.5">
+                                                {Array.from({ length: testi.rating || 5 }).map((_, i) => <span key={i}>★</span>)}
+                                              </div>
+                                              <p className="text-[9px] text-neutral-600 font-serif italic leading-relaxed">
+                                                &ldquo;{testi.quote}&rdquo;
+                                              </p>
+                                              <div className="flex items-center gap-1.5 pt-1">
+                                                <div className="w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center text-[8px] font-bold text-neutral-500 font-sans">
+                                                  {testi.author ? testi.author.charAt(0) : "U"}
+                                                </div>
+                                                <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-500 font-sans">{testi.author || "User"}</span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "faq" && (
+                                      <section className="py-10 px-8 bg-[#fdfcf9] space-y-4">
+                                        <h3 className="font-serif text-xs text-center font-light text-neutral-900">
+                                          {content.title || "Tanya Jawab (FAQ)"}
+                                        </h3>
+                                        <div className="space-y-2">
+                                          {(content.items || []).map((faq: any, idx: number) => (
+                                            <div key={idx} className="bg-white border border-[#eadecb] rounded-lg p-3">
+                                              <div className="font-serif text-[10px] font-bold text-neutral-800 flex justify-between">
+                                                <span>{faq.q}</span>
+                                                <span className="text-amber-600 font-sans font-bold">↓</span>
+                                              </div>
+                                              <p className="text-neutral-400 text-[9px] leading-relaxed mt-1 border-t border-neutral-50 pt-1">
+                                                {faq.a}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "lead_form" && (
+                                      <section className="py-10 px-8 bg-white flex justify-center">
+                                        <div className="bg-[#fdfcf9] border border-[#eadecb] p-6 rounded-2xl w-full max-w-sm space-y-4">
+                                          <div className="text-center space-y-1">
+                                            <h3 className="font-serif text-xs font-bold text-neutral-950">
+                                              {content.title || "Konsultasikan Jenis Kulit Anda"}
+                                            </h3>
+                                            <p className="text-[8px] text-neutral-400 leading-normal">
+                                              {content.subtitle || "Silakan lengkapi formulir di bawah ini."}
+                                            </p>
+                                          </div>
+                                          <div className="space-y-2 text-[9px] font-sans">
+                                            <input type="text" placeholder="Nama Lengkap" disabled className="w-full px-2 py-1.5 border border-[#eadecb] rounded bg-white text-[9px] outline-none" />
+                                            <div className="grid grid-cols-2 gap-2">
+                                              <input type="text" placeholder="No WhatsApp" disabled className="w-full px-2 py-1.5 border border-[#eadecb] rounded bg-white text-[9px] outline-none" />
+                                              <input type="text" placeholder="Email" disabled className="w-full px-2 py-1.5 border border-[#eadecb] rounded bg-white text-[9px] outline-none" />
+                                            </div>
+                                            <textarea rows={1} placeholder="Catatan Masalah..." disabled className="w-full px-2 py-1.5 border border-[#eadecb] rounded bg-white text-[9px] outline-none resize-none" />
+                                            <span className="w-full py-2 bg-neutral-950 text-white rounded text-[8px] font-bold uppercase tracking-widest text-center block">
+                                              {content.btn_text || "Kirim Data"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </section>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </main>
+
+                          <footer className="border-t border-[#eadecb]/40 py-6 bg-[#faf8f5] text-center text-[8px] text-neutral-400">
+                            <p className="font-serif text-neutral-500 font-bold mb-1">NEXAMART BEAUTY CLINICAL</p>
+                            <p>© 2026 NEXAMART. Dibuat eksklusif untuk iklan & penawaran khusus.</p>
+                          </footer>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Mobile iPhone Frame View */
+                      <div className="w-[320px] bg-neutral-950 border-[8px] border-neutral-900 rounded-[36px] shadow-2xl relative overflow-hidden flex flex-col shrink-0 min-h-[540px] max-h-[540px]">
+                        {/* Notch */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-4 bg-neutral-900 rounded-b-xl z-50 flex items-center justify-center">
+                          <span className="w-8 h-1 bg-neutral-800 rounded-full mb-0.5"></span>
+                        </div>
+
+                        {/* Rendering Page Content inside simulated portrait viewport */}
+                        <div className="flex-1 bg-[#fdfcf9] overflow-y-auto text-neutral-800 text-left pt-4">
+                          <header className="border-b border-[#eadecb]/40 bg-white/70 backdrop-blur-md px-4 py-2.5 flex justify-between items-center">
+                            <span className="font-serif text-[10px] font-bold tracking-[0.2em] text-[#1c1a17]">
+                              NEXAMART
+                            </span>
+                            <span className="text-[7px] font-bold uppercase tracking-wider text-neutral-400 border border-neutral-200 px-2 py-0.5 rounded-full">
+                              Pesan
+                            </span>
+                          </header>
+
+                          <main>
+                            {(!lpForm.blocks || lpForm.blocks.length === 0) ? (
+                              <div className="py-24 text-center text-[10px] text-neutral-400 font-sans italic px-4">
+                                Preview kosong. Tambahkan blok konten di panel kiri untuk mulai mendesain.
+                              </div>
+                            ) : (
+                              lpForm.blocks.map((block) => {
+                                const { id, type, content } = block;
+                                return (
+                                  <div key={id} className="relative group border-b border-neutral-100/50">
+                                    {type === "hero" && (
+                                      <section className={`bg-gradient-to-br ${content.bg_gradient || "from-[#faf8f5] to-[#f4ead4]"} py-8 px-4 flex flex-col gap-4 items-center text-center`}>
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-center gap-1 text-[#c3a475] text-[7px] font-bold uppercase tracking-widest">
+                                            <Sparkles className="w-2.5 h-2.5 animate-pulse" /> Penawaran Eksklusif
+                                          </div>
+                                          <h1 className="font-serif text-sm font-light text-neutral-900 leading-tight">
+                                            {content.title || "Kembalikan Kilau Alami Wajah Anda"}
+                                          </h1>
+                                          <p className="text-[9px] text-neutral-500 leading-normal">
+                                            {content.subtitle || "Formula esens premium untuk memperkuat skin barrier Anda."}
+                                          </p>
+                                          <span className="inline-block px-4 py-1.5 bg-neutral-950 text-white text-[7px] font-bold uppercase tracking-widest rounded-full shadow-sm mt-1">
+                                            {content.cta_text || "Dapatkan Sekarang"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-center">
+                                          <div className="w-28 h-28 rounded-xl overflow-hidden border border-[#eadecb]/50 shadow bg-white p-1.5">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                              src={content.image_url || "https://images.unsplash.com/photo-1608248597481-496100c8c836?w=600&auto=format&fit=crop&q=60"}
+                                              alt="Preview Hero"
+                                              className="w-full h-full object-cover rounded-lg"
+                                            />
+                                          </div>
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "product_spotlight" && (
+                                      <section className="py-8 px-4 bg-white flex flex-col gap-4 items-center text-center">
+                                        <div className="flex justify-center">
+                                          <div className="w-24 h-32 rounded-xl overflow-hidden shadow-sm">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                              src={content.image_url || "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=60"}
+                                              alt="Preview Spotlight"
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <span className="text-[7px] font-bold uppercase tracking-widest text-[#c3a475] bg-[#f6f3ed] px-2 py-0.5 rounded-full inline-block">Sorotan Produk</span>
+                                          <h2 className="font-serif text-xs font-light text-neutral-900 leading-snug">
+                                            {content.title || "Mengapa Memilih Kami?"}
+                                          </h2>
+                                          <p className="text-[9px] text-neutral-500 leading-normal">
+                                            {content.description || "Diformulasikan secara ilmiah untuk menghidrasi kulit secara mendalam."}
+                                          </p>
+                                          {content.price && (
+                                            <div className="text-[10px] font-serif font-bold text-amber-800">
+                                              {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(content.price)}
+                                            </div>
+                                          )}
+                                          <span className="inline-block px-4 py-1.5 bg-neutral-950 text-white text-[7px] font-bold uppercase tracking-widest rounded-full shadow-sm">
+                                            {content.btn_text || "Beli Sekarang"}
+                                          </span>
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "benefits" && (
+                                      <section className="py-8 px-4 bg-[#fdfcf9]">
+                                        <h2 className="font-serif text-xs font-light text-neutral-950 text-center mb-4">
+                                          {content.title || "Manfaat Hasil Studi Klinis"}
+                                        </h2>
+                                        <div className="flex flex-col gap-2">
+                                          {(content.items || []).map((benefit: any, idx: number) => (
+                                            <div key={idx} className="bg-white border border-[#eadecb] p-2.5 rounded-xl space-y-1">
+                                              <div className="w-4 h-4 rounded-full bg-[#f6f3ed] flex items-center justify-center text-[#c3a475] text-[7px] font-bold">
+                                                ✓
+                                              </div>
+                                              <h4 className="font-serif text-[9px] font-semibold text-neutral-900 leading-tight">
+                                                {benefit.title || "Manfaat"}
+                                              </h4>
+                                              <p className="text-neutral-400 text-[8px] leading-relaxed">
+                                                {benefit.desc || "Deskripsi..."}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "testimonials" && (
+                                      <section className="py-8 px-4 bg-white space-y-4">
+                                        <h3 className="font-serif text-[10px] text-center font-light text-neutral-900">
+                                          {content.title || "Apa Kata Pelanggan Setia"}
+                                        </h3>
+                                        <div className="flex flex-col gap-3">
+                                          {(content.items || []).map((testi: any, idx: number) => (
+                                            <div key={idx} className="bg-[#fdfcf9] border border-[#eadecb]/50 p-3 rounded-xl space-y-1.5">
+                                              <div className="text-amber-500 text-[7px] flex gap-0.5">
+                                                {Array.from({ length: testi.rating || 5 }).map((_, i) => <span key={i}>★</span>)}
+                                              </div>
+                                              <p className="text-[8px] text-neutral-600 font-serif italic leading-relaxed">
+                                                &ldquo;{testi.quote}&rdquo;
+                                              </p>
+                                              <div className="flex items-center gap-1.5 pt-0.5">
+                                                <div className="w-4 h-4 rounded-full bg-neutral-200 flex items-center justify-center text-[7px] font-bold text-neutral-500 font-sans">
+                                                  {testi.author ? testi.author.charAt(0) : "U"}
+                                                </div>
+                                                <span className="text-[7px] font-bold uppercase tracking-wider text-neutral-500 font-sans">{testi.author || "User"}</span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "faq" && (
+                                      <section className="py-8 px-4 bg-[#fdfcf9] space-y-3">
+                                        <h3 className="font-serif text-[10px] text-center font-light text-neutral-900">
+                                          {content.title || "Tanya Jawab (FAQ)"}
+                                        </h3>
+                                        <div className="space-y-1.5">
+                                          {(content.items || []).map((faq: any, idx: number) => (
+                                            <div key={idx} className="bg-white border border-[#eadecb] rounded-lg p-2.5">
+                                              <div className="font-serif text-[9px] font-bold text-neutral-800 flex justify-between">
+                                                <span>{faq.q}</span>
+                                                <span className="text-amber-600 font-sans font-bold">↓</span>
+                                              </div>
+                                              <p className="text-neutral-400 text-[8px] leading-relaxed mt-1 border-t border-neutral-50 pt-1">
+                                                {faq.a}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+
+                                    {type === "lead_form" && (
+                                      <section className="py-8 px-4 bg-white flex justify-center">
+                                        <div className="bg-[#fdfcf9] border border-[#eadecb] p-4 rounded-xl w-full space-y-3">
+                                          <div className="text-center space-y-1">
+                                            <h3 className="font-serif text-[10px] font-bold text-neutral-950">
+                                              {content.title || "Konsultasikan Jenis Kulit Anda"}
+                                            </h3>
+                                            <p className="text-[7px] text-neutral-400 leading-normal">
+                                              {content.subtitle || "Silakan lengkapi formulir di bawah ini."}
+                                            </p>
+                                          </div>
+                                          <div className="space-y-1.5 text-[8px] font-sans">
+                                            <input type="text" placeholder="Nama Lengkap" disabled className="w-full px-2 py-1 border border-[#eadecb] rounded bg-white text-[8px] outline-none" />
+                                            <input type="text" placeholder="No WhatsApp" disabled className="w-full px-2 py-1 border border-[#eadecb] rounded bg-white text-[8px] outline-none" />
+                                            <input type="text" placeholder="Email" disabled className="w-full px-2 py-1 border border-[#eadecb] rounded bg-white text-[8px] outline-none" />
+                                            <textarea rows={1} placeholder="Catatan Masalah..." disabled className="w-full px-2 py-1 border border-[#eadecb] rounded bg-white text-[8px] outline-none resize-none" />
+                                            <span className="w-full py-1.5 bg-neutral-950 text-white rounded text-[7px] font-bold uppercase tracking-widest text-center block">
+                                              {content.btn_text || "Kirim Data"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </section>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </main>
+
+                          <footer className="border-t border-[#eadecb]/40 py-4 bg-[#faf8f5] text-center text-[7px] text-neutral-400">
+                            <p className="font-serif text-neutral-500 font-bold mb-0.5">NEXAMART BEAUTY CLINICAL</p>
+                            <p>© 2026 NEXAMART.</p>
+                          </footer>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Footer Actions */}
+              <div className="p-6 border-t border-[#eadecb]/40 bg-[#fdfcf9] flex justify-between items-center shrink-0 font-sans">
+                <div className="text-[9px] text-neutral-400 font-bold font-mono">
+                  JSON SIZE: {JSON.stringify(lpForm.blocks).length} bytes
+                </div>
+                <div className="flex gap-3 font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setIsLpModalOpen(false)}
+                    className="px-5 py-3 border border-[#eadecb] rounded-xl text-[10px] font-bold uppercase tracking-widest text-neutral-600 hover:bg-neutral-50 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleLpSubmit(e as any)}
+                    disabled={isLpSubmitting}
+                    className="px-6 py-3 bg-neutral-950 hover:bg-neutral-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    {isLpSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Simpan Halaman
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
             </motion.div>
           </div>
         )}
