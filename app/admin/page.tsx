@@ -9,7 +9,7 @@ import {
   TrendingUp, Calendar, Search, Filter, HelpCircle,
   Package, BookOpen, Tag, MessageSquare, Download, Printer,
   Globe, Mail, Users, Smartphone, Copy, ExternalLink, History, Paperclip,
-  Sparkles
+  Sparkles, Menu
 } from "lucide-react";
 import Link from "next/link";
 
@@ -148,6 +148,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "orders" | "subscriptions" | "products" | "jurnal" | "coupons" | "landing_pages" | "marketing_blast" | "root_access" | "knowledge" | "chatbot" | "spreadsheets"
   >("overview");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Root Access & Accounts & Logs States
   const [adminAccountsList, setAdminAccountsList] = useState<any[]>([]);
@@ -1838,18 +1839,106 @@ export default function AdminDashboard() {
     );
   }
 
+  const tabGroups = [
+    {
+      title: "Core Operations",
+      items: [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "orders", label: "Orders", icon: ShoppingBag },
+        { id: "subscriptions", label: "Subscriptions", icon: RefreshCw },
+      ]
+    },
+    {
+      title: "Catalog & Marketing",
+      items: [
+        { id: "products", label: "Products", icon: Package },
+        { id: "jurnal", label: "Jurnal", icon: BookOpen },
+        { id: "coupons", label: "Voucher", icon: Tag },
+        { id: "landing_pages", label: "Landing Page", icon: Globe },
+        { id: "marketing_blast", label: "Marketing Blast", icon: Mail },
+      ]
+    },
+    {
+      title: "Intelligence & Data",
+      items: [
+        { id: "knowledge", label: "AI Knowledge", icon: Database },
+        { id: "chatbot", label: "AI Chatbot", icon: MessageSquare },
+        { id: "spreadsheets", label: "Spreadsheets", icon: Download },
+      ]
+    },
+    {
+      title: "Administration",
+      items: [
+        { id: "root_access", label: "Root Access", icon: Users },
+      ]
+    }
+  ];
+
+  const renderNavItems = (isMobile: boolean = false) => {
+    return (
+      <nav className="space-y-6">
+        {tabGroups.map((group) => (
+          <div key={group.title} className="space-y-2">
+            <h5 className="text-[10px] uppercase font-bold tracking-[0.15em] text-[#c3a475] px-3">
+              {group.title}
+            </h5>
+            <div className="space-y-1">
+              {group.items.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id as typeof activeTab);
+                      if (isMobile) {
+                        setIsMobileSidebarOpen(false);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative cursor-pointer text-left outline-none ${
+                      isActive 
+                        ? "text-[#1c1a17] bg-[#f5efe4] border border-[#eadecb]" 
+                        : "text-neutral-500 hover:text-[#1c1a17] hover:bg-neutral-50 border border-transparent"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-[#c3a475]" : "text-neutral-400"}`} />
+                    <span className="flex-1">{tab.label}</span>
+                    {isActive && (
+                      <motion.div
+                        layoutId={isMobile ? "active-mobile-indicator" : "active-desktop-indicator"}
+                        className="w-1.5 h-1.5 rounded-full bg-[#c3a475]"
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#fdfcf9] font-sans selection:bg-neutral-950 selection:text-white pb-16">
+    <div className="min-h-screen bg-[#fdfcf9] font-sans selection:bg-neutral-950 selection:text-white pb-16 flex flex-col">
       
       {/* 1. TOP HEADER NAVIGATION */}
       <header className="border-b border-[#eadecb]/50 bg-white/70 backdrop-blur-md sticky top-0 z-30 transition-all">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-[#f6f3ed] text-neutral-600 transition-colors cursor-pointer"
+              aria-label="Buka Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <Link href="/" className="font-serif text-xl font-light tracking-[0.2em] text-[#1c1a17] uppercase hover:opacity-80">
               NEXAMART
             </Link>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#c3a475]" />
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#c3a475] bg-[#f6f3ed] px-3 py-1 rounded-full border border-[#eadecb]/30">
+            <span className="hidden sm:inline w-1.5 h-1.5 rounded-full bg-[#c3a475]" />
+            <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-widest text-[#c3a475] bg-[#f6f3ed] px-3 py-1 rounded-full border border-[#eadecb]/30">
               Admin Portal
             </span>
           </div>
@@ -1876,73 +1965,40 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 mt-8">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-1 gap-8 mt-6">
         
-        {/* ACTION / NOTIFICATION TOAST */}
-        <AnimatePresence>
-          {actionMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className={`mb-6 p-4 rounded-xl border flex items-center justify-between text-xs font-semibold uppercase tracking-wider ${
-                actionMessage.type === "success" 
-                  ? "bg-green-50 text-green-700 border-green-200" 
-                  : "bg-red-50 text-red-700 border-red-200"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {actionMessage.type === "success" ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                <span>{actionMessage.text}</span>
-              </div>
-              <button onClick={() => setActionMessage(null)} className="hover:opacity-60 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Left Sidebar - Desktop only */}
+        <aside className="hidden lg:block w-72 shrink-0 sticky top-[104px] h-[calc(100vh-8.5rem)] overflow-y-auto no-scrollbar pr-2 pb-8">
+          {renderNavItems()}
+        </aside>
 
-        {/* 2. NAVIGATION TABS */}
-        <div className="flex border-b border-[#eadecb] gap-8 mb-8 overflow-x-auto no-scrollbar">
-          {[
-            { id: "overview", label: "Overview", icon: LayoutDashboard },
-            { id: "orders", label: "Orders", icon: ShoppingBag },
-            { id: "subscriptions", label: "Subscriptions", icon: RefreshCw },
-            { id: "products", label: "Products", icon: Package },
-            { id: "jurnal", label: "Jurnal", icon: BookOpen },
-            { id: "coupons", label: "Voucher", icon: Tag },
-            { id: "landing_pages", label: "Landing Page", icon: Globe },
-            { id: "marketing_blast", label: "Marketing Blast", icon: Mail },
-            { id: "root_access", label: "Root Access", icon: Users },
-            { id: "knowledge", label: "AI Knowledge", icon: Database },
-            { id: "chatbot", label: "AI Chatbot", icon: MessageSquare },
-            { id: "spreadsheets", label: "Spreadsheets", icon: Download },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 pb-4 text-xs font-bold uppercase tracking-widest transition-all relative cursor-pointer outline-none ${
-                  isActive ? "text-neutral-950 font-extrabold" : "text-neutral-400 hover:text-neutral-600"
+        {/* Right Content Area */}
+        <main className="flex-1 min-w-0 pb-16">
+          {/* ACTION / NOTIFICATION TOAST */}
+          <AnimatePresence>
+            {actionMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className={`mb-6 p-4 rounded-xl border flex items-center justify-between text-xs font-semibold uppercase tracking-wider ${
+                  actionMessage.type === "success" 
+                    ? "bg-green-50 text-green-700 border-green-200" 
+                    : "bg-red-50 text-red-700 border-red-200"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-[#c3a475]" : "text-neutral-400"}`} />
-                {tab.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="active-admin-tab-bar"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#c3a475]"
-                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
+                <div className="flex items-center gap-2">
+                  {actionMessage.type === "success" ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                  <span>{actionMessage.text}</span>
+                </div>
+                <button onClick={() => setActionMessage(null)} className="hover:opacity-60 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* 3. TABS CONTENT */}
+          {/* 3. TABS CONTENT */}
         <AnimatePresence mode="wait">
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
@@ -3994,7 +4050,67 @@ export default function AdminDashboard() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
+    </div>
+
+    {/* 5. MOBILE DRAWER SIDEBAR */}
+    <AnimatePresence>
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="fixed inset-0 bg-neutral-950/40 backdrop-blur-xs"
+          />
+
+          {/* Sidebar panel */}
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-y-0 left-0 w-72 bg-[#fdfcf9] border-r border-[#eadecb] flex flex-col p-6 shadow-2xl overflow-y-auto no-scrollbar"
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-6 border-b border-[#eadecb]/50 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="font-serif text-lg font-light tracking-[0.2em] text-[#1c1a17] uppercase">
+                  NEXAMART
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#c3a475]" />
+              </div>
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#f6f3ed] text-neutral-500 hover:text-neutral-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Navigation Items */}
+            <div className="flex-1">
+              {renderNavItems(true)}
+            </div>
+
+            {/* Drawer Footer / Session Info */}
+            <div className="mt-8 pt-6 border-t border-[#eadecb]/50 space-y-4">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-[#c3a475] bg-[#f6f3ed] px-3 py-2 rounded-full border border-[#eadecb]/30 text-center">
+                Sesi: {adminUsername} ({adminRole})
+              </div>
+              <Link
+                href="/"
+                className="flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-neutral-950 transition-colors border border-neutral-200 py-2.5 rounded-full bg-[#fdfcf9] w-full"
+              >
+                Kunjungi Toko
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
 
       {/* ============================================================== */}
       {/* 4. MODALS & OVERLAYS */}
