@@ -551,14 +551,14 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   required
-                  maxLength={6}
-                  placeholder="••••••"
+                  maxLength={8}
+                  placeholder="••••••••"
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value)}
                   className="w-full text-center tracking-[0.6em] text-lg font-bold px-4 py-2.5 rounded-xl border border-[#eadecb] bg-white focus:outline-none focus:border-gold"
                 />
                 <p className="text-[9px] text-neutral-400 text-center mt-1 leading-normal">
-                  Masukkan 4-digit kode simulasi, atau klik langsung tombol <strong>&quot;Confirm email address&quot;</strong> di email yang Anda terima untuk masuk secara otomatis.
+                  Masukkan kode simulasi (4 digit), kode OTP asli (6/8 digit) dari email, atau klik langsung tombol <strong>&quot;Confirm email address&quot;</strong> di email yang Anda terima untuk masuk secara otomatis.
                 </p>
               </div>
 
