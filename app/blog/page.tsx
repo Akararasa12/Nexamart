@@ -59,7 +59,7 @@ export default function BlogPage() {
   useEffect(() => {
     async function fetchJournals() {
       try {
-        const res = await fetch("/api/journals");
+        const res = await fetch("/api/journals", { cache: "no-store" });
         const data = await res.json();
         if (data.success && data.journals && data.journals.length > 0) {
           setJournals(data.journals);

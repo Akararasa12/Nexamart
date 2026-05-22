@@ -300,16 +300,21 @@ function ProductCarousel({ products, title, addToCart }: {
 
 const mapHomepageProduct = (prod: DBProduct): MappedProduct => {
   const attrs = prod.attributes || {};
-  const tagsList = Array.isArray(attrs.tags) ? attrs.tags : [];
+  const tagsList = Array.isArray(attrs.tags)
+    ? attrs.tags.map((t: unknown) => typeof t === "string" ? t.trim().toLowerCase() : "")
+    : [];
   let displayTag = "";
-  if (tagsList.includes("Baru") || tagsList.includes("New")) {
+  if (tagsList.includes("baru") || tagsList.includes("new")) {
     displayTag = "Baru";
-  } else if (tagsList.includes("Best Seller")) {
+  } else if (tagsList.includes("best seller") || tagsList.includes("bestseller")) {
     displayTag = "Best Seller";
-  } else if (tagsList.includes("Populer") || tagsList.includes("Popular")) {
+  } else if (tagsList.includes("populer") || tagsList.includes("popular")) {
     displayTag = "Populer";
   } else if (tagsList.length > 0) {
-    displayTag = tagsList[0];
+    const originalTag = Array.isArray(attrs.tags)
+      ? attrs.tags.find((t: unknown) => typeof t === "string" && t.trim() !== "")
+      : "";
+    displayTag = originalTag ? (originalTag as string).trim() : "";
   }
 
   return {
@@ -363,11 +368,13 @@ export default function Storefront() {
 
   // Dynamic filter products
   const productsTerbaru = useMemo(() => {
-    return productsList.filter(p => ["Baru", "Best Seller"].includes(p.tag || ""));
+    const filtered = productsList.filter(p => ["Baru", "Best Seller"].includes(p.tag || ""));
+    return filtered.length > 0 ? filtered : productsList;
   }, [productsList]);
 
   const productsTerpopuler = useMemo(() => {
-    return productsList.filter(p => ["Populer", "Best Seller"].includes(p.tag || ""));
+    const filtered = productsList.filter(p => ["Populer", "Best Seller"].includes(p.tag || ""));
+    return filtered.length > 0 ? filtered : productsList;
   }, [productsList]);
 
   // FAQ Accordion State
@@ -405,7 +412,7 @@ export default function Storefront() {
 
     async function loadDynamicStorefront() {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products", { cache: "no-store" });
         const data = await res.json();
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
           // Map products

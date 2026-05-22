@@ -167,7 +167,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res = await fetch(`/api/products?slug=${slug}`);
+        const res = await fetch(`/api/products?slug=${slug}`, { cache: "no-store" });
         const data = await res.json();
         if (data.success && data.product) {
           const mapped = mapProductFromDB(data.product);

@@ -47,6 +47,22 @@ interface Order {
   created_at: string;
 }
 
+interface ProductAttributes {
+  category?: string;
+  tags?: string[];
+  ingredients?: string;
+  howToUse?: string;
+  rating?: number;
+  reviewsCount?: number;
+  reviews?: Array<{
+    name: string;
+    rating: number;
+    date: string;
+    text: string;
+  }>;
+  [key: string]: unknown;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -54,6 +70,7 @@ interface Product {
   base_price: number;
   description?: string;
   images: string[];
+  attributes?: ProductAttributes;
   product_variants?: Array<{
     id: string;
     sku: string;
@@ -186,6 +203,11 @@ export default function AdminDashboard() {
     sku: string;
     price: number;
     stock: number;
+    category: string;
+    tags: string;
+    ingredients: string;
+    howToUse: string;
+    originalAttributes?: ProductAttributes;
   }>({
     name: "",
     slug: "",
@@ -194,7 +216,11 @@ export default function AdminDashboard() {
     images: [],
     sku: "",
     price: 0,
-    stock: 0
+    stock: 0,
+    category: "Skincare",
+    tags: "Skincare",
+    ingredients: "",
+    howToUse: ""
   });
   const [isProductSubmitting, setIsProductSubmitting] = useState<boolean>(false);
 
@@ -494,13 +520,36 @@ export default function AdminDashboard() {
       const url = "/api/admin/products";
       const method = isEdit ? "PUT" : "POST";
 
+      const tagsArray = productForm.tags
+        ? productForm.tags.split(",").map(t => t.trim()).filter(Boolean)
+        : ["Skincare"];
+
+      const payload = {
+        id: productForm.id,
+        name: productForm.name,
+        slug: productForm.slug,
+        description: productForm.description,
+        base_price: productForm.base_price,
+        images: productForm.images,
+        sku: productForm.sku,
+        price: productForm.price,
+        stock: productForm.stock,
+        attributes: {
+          ...(productForm.originalAttributes || {}),
+          category: productForm.category,
+          tags: tagsArray,
+          ingredients: productForm.ingredients,
+          howToUse: productForm.howToUse
+        }
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${authToken}`
         },
-        body: JSON.stringify(productForm)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -520,7 +569,11 @@ export default function AdminDashboard() {
         images: [],
         sku: "",
         price: 0,
-        stock: 0
+        stock: 0,
+        category: "Skincare",
+        tags: "Skincare",
+        ingredients: "",
+        howToUse: ""
       });
       fetchProducts();
     } catch (err: unknown) {
@@ -532,6 +585,7 @@ export default function AdminDashboard() {
 
   const handleEditProductClick = (p: Product) => {
     const variant = p.product_variants?.[0] || { sku: "", price: 0, stock: 0, id: "" };
+    const attrs = p.attributes || {};
     setProductForm({
       id: p.id,
       name: p.name,
@@ -541,7 +595,12 @@ export default function AdminDashboard() {
       images: p.images || [],
       sku: variant.sku || "",
       price: variant.price || p.base_price,
-      stock: variant.stock || 0
+      stock: variant.stock || 0,
+      category: attrs.category || "Skincare",
+      tags: Array.isArray(attrs.tags) ? attrs.tags.join(", ") : "Skincare",
+      ingredients: attrs.ingredients || "",
+      howToUse: attrs.howToUse || "",
+      originalAttributes: attrs
     });
     setIsProductModalOpen(true);
   };
@@ -1953,7 +2012,11 @@ export default function AdminDashboard() {
                       images: [],
                       sku: "",
                       price: 0,
-                      stock: 0
+                      stock: 0,
+                      category: "Skincare",
+                      tags: "Skincare",
+                      ingredients: "",
+                      howToUse: ""
                     });
                     setIsProductModalOpen(true);
                   }}
@@ -2889,6 +2952,63 @@ export default function AdminDashboard() {
                         onChange={(e) => setProductForm(prev => ({ ...prev, stock: Number(e.target.value) }))}
                         className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none"
                         required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Kategori Produk
+                      </label>
+                      <select
+                        value={productForm.category}
+                        onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none cursor-pointer font-sans"
+                      >
+                        <option value="Skincare">Skincare</option>
+                        <option value="Makeup">Makeup</option>
+                        <option value="Anti-Aging">Anti-Aging</option>
+                        <option value="Organik">Organik</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Tags / Label (pisahkan dengan koma)
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.tags}
+                        onChange={(e) => setProductForm(prev => ({ ...prev, tags: e.target.value }))}
+                        placeholder="Contoh: Skincare, Organik, Best Seller, Baru"
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl text-neutral-800 focus:border-[#c3a475] outline-none font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Kandungan Bahan Aktif (Ingredients)
+                      </label>
+                      <textarea
+                        value={productForm.ingredients}
+                        onChange={(e) => setProductForm(prev => ({ ...prev, ingredients: e.target.value }))}
+                        rows={3}
+                        placeholder="Kandungan bahan utama produk..."
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl leading-relaxed text-neutral-800 focus:border-[#c3a475] outline-none font-sans"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        Cara Pemakaian (How to Use)
+                      </label>
+                      <textarea
+                        value={productForm.howToUse}
+                        onChange={(e) => setProductForm(prev => ({ ...prev, howToUse: e.target.value }))}
+                        rows={3}
+                        placeholder="Cara pemakaian produk..."
+                        className="w-full px-3 py-2.5 border border-[#eadecb] bg-[#fdfcf9] rounded-xl leading-relaxed text-neutral-800 focus:border-[#c3a475] outline-none font-sans"
                       />
                     </div>
                   </div>

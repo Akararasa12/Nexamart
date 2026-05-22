@@ -100,7 +100,7 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products", { cache: "no-store" });
         const data = await res.json();
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
           const mapped = data.products.map(mapProductFromDB);
@@ -132,8 +132,8 @@ export default function ProductsPage() {
         product.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesTag = selectedTag === "Semua" || 
-        product.category === selectedTag || 
-        product.tags.includes(selectedTag);
+        product.category.toLowerCase() === selectedTag.toLowerCase() || 
+        product.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase());
 
       return matchesSearch && matchesTag;
     });

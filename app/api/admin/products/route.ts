@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 async function verifyAuth(request: Request) {
   const authHeader = request.headers.get("Authorization");
   if (authHeader === "Bearer nexa_admin_authenticated") {
@@ -34,7 +36,14 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, products });
+    return NextResponse.json(
+      { success: true, products },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0, must-revalidate",
+        },
+      }
+    );
   } catch (error: unknown) {
     const err = error as Error;
     console.error("GET Products API error:", err.message);
@@ -132,17 +141,21 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "ID, Name, Slug, and Base Price are required" }, { status: 400 });
     }
 
+    const updateData: Record<string, unknown> = {
+      name,
+      slug,
+      description,
+      base_price,
+      images: images || [],
+    };
+    if (attributes !== undefined) {
+      updateData.attributes = attributes;
+    }
+
     // 1. Update product
     const { data: updatedProduct, error: productError } = await supabaseAdmin
       .from("products")
-      .update({
-        name,
-        slug,
-        description,
-        base_price,
-        images: images || [],
-        attributes: attributes || {}
-      })
+      .update(updateData)
       .eq("id", id)
       .select();
 

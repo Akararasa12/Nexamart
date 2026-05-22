@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 const SEED_JOURNALS = [
   {
     slug: "rahasia-galactomyces-kulit-cerah-alami",
@@ -75,7 +77,14 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Artikel tidak ditemukan" }, { status: 404 });
       }
 
-      return NextResponse.json({ success: true, journal });
+      return NextResponse.json(
+        { success: true, journal },
+        {
+          headers: {
+            "Cache-Control": "no-store, max-age=0, must-revalidate",
+          },
+        }
+      );
     }
 
     const { data: journals, error } = await supabaseAdmin
@@ -85,7 +94,14 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, journals });
+    return NextResponse.json(
+      { success: true, journals },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0, must-revalidate",
+        },
+      }
+    );
   } catch (error: unknown) {
     const err = error as Error;
     console.error("GET Public Journals API error:", err.message);

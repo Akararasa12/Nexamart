@@ -34,7 +34,14 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, journals });
+    return NextResponse.json(
+      { success: true, journals },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0, must-revalidate",
+        },
+      }
+    );
   } catch (error: unknown) {
     const err = error as Error;
     console.error("GET Journals API error:", err.message);

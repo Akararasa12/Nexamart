@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { createClient } = require('@supabase/supabase-js');
 
-export const dynamic = "force-dynamic";
+const supabaseUrl = 'https://auqyahcowjkjkbbwrmug.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cXlhaGNvd2pramtiYndybXVnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTI5MTk1NywiZXhwIjoyMDk0ODY3OTU3fQ.DftgOaH4WgB8prKgPSUMqdQVWl70jIzLD8ZS8WUKBXc';
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 const SEED_PRODUCTS = [
   {
@@ -77,7 +80,8 @@ const SEED_PRODUCTS = [
   }
 ];
 
-async function checkAndSeedProducts() {
+async function seed() {
+  console.log("Checking products count...");
   const { count, error: countError } = await supabaseAdmin
     .from("products")
     .select("id", { count: "exact", head: true });
@@ -87,6 +91,7 @@ async function checkAndSeedProducts() {
     return;
   }
 
+  console.log("Current count in DB:", count);
   if (count === 0) {
     console.log("Seeding products...");
     for (const seed of SEED_PRODUCTS) {
@@ -108,6 +113,8 @@ async function checkAndSeedProducts() {
         continue;
       }
 
+      console.log(`Seeded product: ${seed.name} with ID: ${product.id}`);
+
       const variantsToInsert = seed.variants.map((v) => ({
         product_id: product.id,
         sku: v.sku,
@@ -122,60 +129,12 @@ async function checkAndSeedProducts() {
 
       if (variantError) {
         console.error(`Failed to seed variants for ${seed.name}:`, variantError.message);
+      } else {
+        console.log(`Seeded variants for ${seed.name}`);
       }
     }
-    console.log("Seeding products completed.");
+    console.log("Seeding completed.");
   }
 }
 
-export async function GET(request: Request) {
-  try {
-    // Run seed check
-    await checkAndSeedProducts();
-
-    const { searchParams } = new URL(request.url);
-    const slug = searchParams.get("slug");
-
-    if (slug) {
-      const { data: product, error } = await supabaseAdmin
-        .from("products")
-        .select("*, product_variants(*)")
-        .eq("slug", slug)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!product) {
-        return NextResponse.json({ error: "Product not found" }, { status: 404 });
-      }
-
-      return NextResponse.json(
-        { success: true, product },
-        {
-          headers: {
-            "Cache-Control": "no-store, max-age=0, must-revalidate",
-          },
-        }
-      );
-    }
-
-    const { data: products, error } = await supabaseAdmin
-      .from("products")
-      .select("*, product_variants(*)")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    return NextResponse.json(
-      { success: true, products },
-      {
-        headers: {
-          "Cache-Control": "no-store, max-age=0, must-revalidate",
-        },
-      }
-    );
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error("GET Products API error:", err.message);
-    return NextResponse.json({ error: "Failed to load products" }, { status: 500 });
-  }
-}
+seed();
