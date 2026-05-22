@@ -14,6 +14,13 @@ export interface CartItem {
   subscriptionFrequency?: string; // "30 days", "60 days", "90 days"
 }
 
+export interface AppliedCoupon {
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  calculated_discount: number;
+}
+
 interface CartContextType {
   cart: CartItem[];
   isCartOpen: boolean;
@@ -27,6 +34,10 @@ interface CartContextType {
   discountAmount: number;
   cartTotal: number;
   bundleTier: number; // 1, 3, 6
+  appliedCoupon: AppliedCoupon | null;
+  applyCoupon: (code: string) => Promise<{ success: boolean; error?: string }>;
+  removeCoupon: () => void;
+  couponDiscountAmount: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -34,6 +45,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -103,6 +115,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setCart([]);
+    setAppliedCoupon(null);
   };
 
   // Calculations
@@ -130,7 +143,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const discountAmount = Math.round(cartSubtotal * (discountPercentage / 100));
-  const cartTotal = cartSubtotal - discountAmount;
+  
+  // Coupon Discount calculation based on remaining subtotal
+  let couponDiscountAmount = 0;
+  if (appliedCoupon) {
+    const remainingTotal = cartSubtotal - discountAmount;
+    if (appliedCoupon.discount_type === "percentage") {
+      couponDiscountAmount = Math.round(remainingTotal * (appliedCoupon.discount_value / 100));
+    } else {
+      couponDiscountAmount = Math.min(appliedCoupon.discount_value, remainingTotal);
+    }
+  }
+
+  const cartTotal = Math.max(0, cartSubtotal - discountAmount - couponDiscountAmount);
+
+  const applyCoupon = async (code: string) => {
+    try {
+      const remainingTotal = cartSubtotal - discountAmount;
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: remainingTotal })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAppliedCoupon({
+          code: data.coupon.code,
+          discount_type: data.coupon.discount_type,
+          discount_value: data.coupon.discount_value,
+          calculated_discount: data.coupon.calculated_discount
+        });
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || "Gagal memproses validasi kupon" };
+      }
+    } catch (err: unknown) {
+      const errorMsg = (err as Error).message || "Terjadi kesalahan koneksi";
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+  };
 
   return (
     <CartContext.Provider
@@ -146,7 +201,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartSubtotal,
         discountAmount,
         cartTotal,
-        bundleTier
+        bundleTier,
+        appliedCoupon,
+        applyCoupon,
+        removeCoupon,
+        couponDiscountAmount
       }}
     >
       {children}

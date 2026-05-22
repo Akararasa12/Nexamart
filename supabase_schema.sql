@@ -95,3 +95,30 @@ as $$
   order by store_knowledge.embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- 7. Journals Table (Blog Posts)
+create table if not exists journals (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  title text not null,
+  content text not null,
+  excerpt text,
+  category text not null,
+  read_time text default '5 Menit Baca',
+  author text default 'dr. Livia W.',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+create index if not exists idx_journals_slug on journals(slug);
+
+-- 8. Coupons Table
+create table if not exists coupons (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  discount_type text not null default 'percentage', -- 'percentage' atau 'fixed'
+  discount_value numeric(12, 2) not null,
+  min_purchase numeric(12, 2) default 0,
+  active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+create index if not exists idx_coupons_code on coupons(code);
+

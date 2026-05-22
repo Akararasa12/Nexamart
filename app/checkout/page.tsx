@@ -39,8 +39,23 @@ interface SnapWindow extends Window {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, discountAmount, cartTotal, clearCart } = useCart();
+  const { 
+    cart, 
+    cartSubtotal, 
+    discountAmount, 
+    cartTotal, 
+    clearCart,
+    appliedCoupon,
+    applyCoupon,
+    removeCoupon,
+    couponDiscountAmount
+  } = useCart();
   const { user } = useAuth();
+
+  // Coupon States
+  const [couponInput, setCouponInput] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   // Loading States
   const [isInitializing, setIsInitializing] = useState(false);
@@ -283,6 +298,19 @@ export default function CheckoutPage() {
   const shippingCost = selectedService ? selectedService.cost[0].value : 0;
   const grandTotal = cartTotal + shippingCost;
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setIsApplyingCoupon(true);
+    setCouponError("");
+    const res = await applyCoupon(couponInput);
+    setIsApplyingCoupon(false);
+    if (res.success) {
+      setCouponInput("");
+    } else {
+      setCouponError(res.error || "Kode kupon tidak valid");
+    }
+  };
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0 || isInitializing) return;
@@ -317,6 +345,8 @@ export default function CheckoutPage() {
         customer,
         shippingCost,
         discountAmount,
+        couponDiscountAmount,
+        couponCode: appliedCoupon?.code || null,
         totalAmount: grandTotal,
         shippingAddress: {
           address,
@@ -699,6 +729,46 @@ export default function CheckoutPage() {
                 );
               })}
             </div>
+            {/* Coupon Promo Section */}
+            <div className="pt-4 border-t border-neutral-100/50 space-y-2">
+              <label className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">Kode Promo / Kupon</label>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800">
+                  <div>
+                    <span className="font-bold">{appliedCoupon.code}</span>
+                    <span className="text-[10px] text-green-600 block">
+                      Teraplikasi (-{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : formatRupiah(appliedCoupon.discount_value)})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-[10px] font-bold text-red-600 hover:underline uppercase tracking-wider"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="Contoh: CANTIK10"
+                    className="w-full text-xs px-4 py-2.5 rounded-xl border border-neutral-200 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={isApplyingCoupon || !couponInput.trim()}
+                    className="px-4 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 transition-colors cursor-pointer"
+                  >
+                    {isApplyingCoupon ? "..." : "Pakai"}
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="text-[10px] text-red-600 font-medium">{couponError}</p>}
+            </div>
 
             {/* Billing figures */}
             <div className="space-y-2.5 text-xs border-t border-neutral-100 pt-4">
@@ -711,6 +781,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-red-600 font-medium">
                   <span>Diskon Bundling</span>
                   <span>-{formatRupiah(discountAmount)}</span>
+                </div>
+              )}
+
+              {couponDiscountAmount > 0 && (
+                <div className="flex justify-between text-green-700 font-medium font-sans">
+                  <span>Diskon Kupon ({appliedCoupon?.code})</span>
+                  <span>-{formatRupiah(couponDiscountAmount)}</span>
                 </div>
               )}
 

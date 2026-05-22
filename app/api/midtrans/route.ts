@@ -36,13 +36,15 @@ interface ShippingAddressPayload {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, customer, shippingAddress, totalAmount, shippingCost, discountAmount } = body as {
+    const { items, customer, shippingAddress, totalAmount, shippingCost, discountAmount, couponDiscountAmount, couponCode } = body as {
       items: CartItemPayload[];
       customer: CustomerPayload;
       shippingAddress: ShippingAddressPayload;
       totalAmount: number;
       shippingCost: number;
       discountAmount?: number;
+      couponDiscountAmount?: number;
+      couponCode?: string;
     };
 
     if (!items || items.length === 0 || !customer || !shippingAddress || !totalAmount) {
@@ -65,6 +67,9 @@ export async function POST(request: Request) {
       postal_code: shippingAddress.postalCode,
       shipping_cost: shippingCost,
       shipping_service: shippingAddress.serviceName,
+      coupon_code: couponCode || null,
+      coupon_discount: couponDiscountAmount || 0,
+      bundle_discount: discountAmount || 0,
       items: items.map((i) => ({
         id: i.id,
         name: i.name,
@@ -159,6 +164,16 @@ export async function POST(request: Request) {
         price: -discountAmount,
         quantity: 1,
         name: "Bundle Discount"
+      });
+    }
+
+    // Add coupon discount as a negative item line
+    if (couponDiscountAmount && couponDiscountAmount > 0) {
+      itemDetails.push({
+        id: "coupon-discount",
+        price: -couponDiscountAmount,
+        quantity: 1,
+        name: `Coupon: ${couponCode || "PROMO"}`
       });
     }
 
