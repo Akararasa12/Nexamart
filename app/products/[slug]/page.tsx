@@ -257,7 +257,7 @@ export default function ProductDetailPage() {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": product.name,
-    "image": `https://nexamart-ecommerce.vercel.app${product.image}`,
+    "image": `https://nexamart-beta.vercel.app${product.image}`,
     "description": product.description,
     "offers": {
       "@type": "AggregateOffer",

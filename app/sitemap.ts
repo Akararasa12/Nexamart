@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://nexamart-ecommerce.vercel.app";
+  const baseUrl = "https://nexamart-beta.vercel.app";
 
   // List of static paths in our luxury cosmetics storefront
   const routes = [

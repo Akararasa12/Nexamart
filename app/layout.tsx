@@ -25,7 +25,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "NEXAMART | Luxury Cosmetics & Skincare Solutions",
   description: "Temukan keindahan legendaris Anda dengan esens organik premium, perawatan kulit mewah, dan kosmetik berkinerja tinggi dari NEXAMART.",
-  metadataBase: new URL("https://nexamart-ecommerce.vercel.app"),
+  metadataBase: new URL("https://nexamart-beta.vercel.app"),
   verification: {
     google: "68nuT-XKHmAg7agi9pBDjkOmNTPg--OJlKOYFiL5_Ds"
   },

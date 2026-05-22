@@ -148,7 +148,7 @@ export default function ProductsPage() {
     "itemListElement": products.map((prod, index) => ({
       "@type": "ListItem",
       "position": index + 1,
-      "url": `https://nexamart-ecommerce.vercel.app/products/${prod.slug}`,
+      "url": `https://nexamart-beta.vercel.app/products/${prod.slug}`,
       "name": prod.name
     }))
   };
