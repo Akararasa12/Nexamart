@@ -3,7 +3,8 @@ import fs from "fs";
 import path from "path";
 
 // Path for local fallback JSON storage
-const FALLBACK_FILE = path.join(process.cwd(), "lib", "db_fallback.json");
+// Path for local fallback JSON storage (use /tmp in Vercel serverless)
++ const FALLBACK_FILE = "/tmp/db_fallback.json";
 
 export interface AdminAccount {
   id: string;
